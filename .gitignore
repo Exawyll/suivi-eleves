@@ -27,7 +27,9 @@ venv/
 # === Node / frontend ===
 node_modules/
 dist/
+dev-dist/
 build/
+*.tsbuildinfo
 
 # === Env ===
 .env
