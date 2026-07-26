@@ -1,0 +1,68 @@
+name: DeepSeek Review
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: deepseek-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  deepseek-review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Review PR diff with DeepSeek V4 Pro
+        env:
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+        run: |
+          if [ -z "$DEEPSEEK_API_KEY" ]; then
+            echo "DEEPSEEK_API_KEY not set — skipping DeepSeek review."
+            exit 0
+          fi
+
+          git fetch origin "$BASE_REF" --depth=1
+          git diff "origin/$BASE_REF...HEAD" > pr.diff
+          head -c 60000 pr.diff > pr.diff.trimmed && mv pr.diff.trimmed pr.diff
+
+          if [ ! -s pr.diff ]; then
+            echo "Empty diff, nothing to review."
+            exit 0
+          fi
+
+          payload=$(jq -n --rawfile diff pr.diff '{
+            model: "deepseek-v4-pro",
+            temperature: 0.2,
+            messages: [
+              {role: "system", content: "Tu es un reviewer de code senior. Analyse ce diff de pull request et signale uniquement les bugs réels, failles de sécurité et régressions probables — pas de style ni de formatage. Réponds en français, en liste à puces, une ligne par problème avec le fichier concerné si identifiable. Si tu ne vois rien à signaler, dis-le explicitement en une phrase."},
+              {role: "user", content: $diff}
+            ]
+          }')
+
+          http_code=$(curl -sS -o response.json -w "%{http_code}" --max-time 120 \
+            https://api.deepseek.com/chat/completions \
+            -H "Authorization: Bearer $DEEPSEEK_API_KEY" \
+            -H "Content-Type: application/json" \
+            -d "$payload")
+
+          if [ "$http_code" != "200" ]; then
+            echo "DeepSeek API call failed (HTTP $http_code):"
+            cat response.json
+            exit 0
+          fi
+
+          { echo "## 🔎 Revue automatique — DeepSeek V4 Pro"; echo; jq -r '.choices[0].message.content' response.json; } > comment.md
+
+          gh pr comment "$PR_NUMBER" --edit-last --body-file comment.md \
+            || gh pr comment "$PR_NUMBER" --body-file comment.md
