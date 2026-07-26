@@ -32,3 +32,6 @@ build/
 # === Env ===
 .env
 .env.local
+
+# === Claude Code runtime ===
+.claude/scheduled_tasks.lock
