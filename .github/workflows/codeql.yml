@@ -11,6 +11,7 @@ on:
 permissions:
   contents: read
   security-events: write
+  actions: read # required on private repos so the action can poll run/upload status
 
 jobs:
   analyze:
@@ -18,7 +19,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        language: ["python", "javascript-typescript"]
+        # javascript-typescript re-added once frontend/ exists — CodeQL errors
+        # out with "configuration error" when a language has zero source files
+        language: ["python"]
     steps:
       - uses: actions/checkout@v4
       - uses: github/codeql-action/init@v3
