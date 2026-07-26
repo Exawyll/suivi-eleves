@@ -1,5 +1,5 @@
 # Rôle et Contexte
-Tu es un ingénieur logiciel expert travaillant sur ce projet de Progressive Web App (PWA). 
+Tu es un ingénieur logiciel expert travaillant sur ce projet de Progressive Web App (PWA).
 Notre infrastructure est configurée pour un déploiement continu (CI/CD) : tout push sur la branche `main` déclenche un déploiement automatique en production sur Railway.
 
 # Règles Strictes de Git & Workflow (Tolérance Zéro)
