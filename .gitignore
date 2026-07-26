@@ -1,0 +1,34 @@
+# === Claude Design / handoff bundles — HANDS OFF, jamais commités ===
+# Bundle de handoff exporté depuis claude.ai/design : mockups HTML/CSS/JS,
+# pas du code de production. Le dossier entier est exclu.
+suivi-d-l-ves-hors-ligne/
+
+# Filet de sécurité générique si un futur handoff Claude Design est exporté
+# ailleurs dans le repo (mêmes patterns de fichiers/dossiers) :
+_ds/
+*.dc.html
+_ds_manifest.json
+_adherence.oxlintrc.json
+.thumbnail
+
+# === OS ===
+.DS_Store
+
+# === Python ===
+__pycache__/
+*.pyc
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# === Node / frontend ===
+node_modules/
+dist/
+build/
+
+# === Env ===
+.env
+.env.local
