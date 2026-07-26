@@ -1,0 +1,25 @@
+.page {
+  padding: 24px 20px 24px;
+}
+
+.greeting {
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 27px;
+  line-height: 1.15;
+  margin-bottom: 2px;
+}
+
+.date {
+  font-size: 13px;
+  color: color-mix(in srgb, var(--color-text) 55%, transparent);
+  margin-bottom: 22px;
+}
+
+.sectionLabel {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: color-mix(in srgb, var(--color-text) 55%, transparent);
+  margin-bottom: 8px;
+}

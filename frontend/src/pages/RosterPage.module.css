@@ -1,0 +1,76 @@
+.page {
+  padding: 24px 20px 24px;
+}
+
+.headerRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.eventButton {
+  flex-shrink: 0;
+  padding: 7px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--color-accent);
+  color: var(--color-accent-700);
+  background: transparent;
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.studentRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--color-divider);
+  width: 100%;
+  background: none;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+}
+
+.studentName {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.noTag {
+  font-size: 11px;
+  color: color-mix(in srgb, var(--color-text) 40%, transparent);
+}
+
+.classEventsSection {
+  margin-top: 20px;
+}
+
+.sectionLabel {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: color-mix(in srgb, var(--color-text) 55%, transparent);
+  margin-bottom: 8px;
+}
+
+.classEvent {
+  padding: 10px 0;
+  border-bottom: 1px solid var(--color-divider);
+}
+
+.classEventText {
+  font-size: 13px;
+  font-style: italic;
+  color: color-mix(in srgb, var(--color-text) 80%, transparent);
+}
+
+.classEventMeta {
+  font-size: 11px;
+  color: color-mix(in srgb, var(--color-text) 50%, transparent);
+  margin-top: 3px;
+}
