@@ -1,0 +1,121 @@
+.page {
+  padding: 24px 20px 28px;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.headerLeft {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.backButton {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 1px solid var(--color-divider);
+  background: transparent;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.title {
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 24px;
+}
+
+.addButton {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid var(--color-accent);
+  background: transparent;
+  color: var(--color-accent-700);
+  font-size: 18px;
+  line-height: 1;
+}
+
+.categoryGroup {
+  margin-bottom: 18px;
+}
+
+.categoryLabel {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: color-mix(in srgb, var(--color-text) 55%, transparent);
+  margin-bottom: 8px;
+}
+
+.tagRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--color-divider);
+  width: 100%;
+  background: none;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+}
+
+.tagEmoji {
+  font-size: 16px;
+}
+
+.tagName {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.variantLabel {
+  font-size: 11px;
+  color: color-mix(in srgb, var(--color-text) 50%, transparent);
+}
+
+.addCategoryForm {
+  display: flex;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.addCategoryInput {
+  flex: 1;
+  box-sizing: border-box;
+  padding: 8px 10px;
+  border: 1px solid var(--color-divider);
+  border-radius: 8px;
+  font-family: var(--font-body);
+  font-size: 13px;
+}
+
+.addCategorySubmit {
+  padding: 8px 14px;
+  border-radius: 6px;
+  border: 1px solid var(--color-accent);
+  color: var(--color-accent-700);
+  background: transparent;
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 13px;
+}
+
+.addCategoryLink {
+  font-size: 13px;
+  color: var(--color-accent-700);
+  background: none;
+  border: none;
+  padding: 0;
+  margin-top: 4px;
+}
