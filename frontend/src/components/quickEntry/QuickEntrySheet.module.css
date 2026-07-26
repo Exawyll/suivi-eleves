@@ -1,0 +1,22 @@
+.footer {
+  padding: 12px 18px 22px;
+  border-top: 1px solid var(--color-divider);
+}
+
+.doneButton {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 12px 22px;
+  border-radius: 8px;
+  border: 1px solid var(--color-accent);
+  color: var(--color-accent-700);
+  background: transparent;
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 14px;
+}
+
+.doneButton:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
