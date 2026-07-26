@@ -1,0 +1,92 @@
+.classChip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--color-divider);
+  border-radius: 8px;
+  margin-bottom: 16px;
+}
+
+.classIcon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: var(--color-accent-100);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+}
+
+.classChipLabel {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.choosePrompt {
+  padding: 10px 12px;
+  border: 1px dashed var(--color-divider);
+  border-radius: 8px;
+  font-size: 13px;
+  color: color-mix(in srgb, var(--color-text) 55%, transparent);
+  background: none;
+  width: 100%;
+  text-align: left;
+  margin-bottom: 8px;
+}
+
+.chipsRow {
+  margin-bottom: 8px;
+}
+
+.studentChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px 6px 6px;
+  border: 1px solid var(--color-divider);
+  border-radius: 20px;
+  margin: 0 8px 8px 0;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.removeButton {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  color: color-mix(in srgb, var(--color-text) 45%, transparent);
+  font-size: 15px;
+  line-height: 1;
+}
+
+.addDashed {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1px dashed var(--color-divider);
+  background: none;
+  font-size: 14px;
+  color: var(--color-accent-700);
+  margin-bottom: 8px;
+  vertical-align: middle;
+}
+
+.linksRow {
+  margin-bottom: 10px;
+  display: flex;
+  gap: 14px;
+}
+
+.linkButton {
+  font-size: 12px;
+  color: var(--color-accent-700);
+  background: none;
+  border: none;
+  padding: 0;
+}

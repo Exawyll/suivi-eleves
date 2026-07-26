@@ -1,0 +1,82 @@
+.page {
+  padding: 24px 20px 28px;
+}
+
+.notesSection {
+  margin-bottom: 16px;
+}
+
+.sectionLabel {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: color-mix(in srgb, var(--color-text) 55%, transparent);
+  margin-bottom: 10px;
+}
+
+.featuredNote {
+  padding: 2px 0 2px 14px;
+  border-left: 2px solid var(--color-accent);
+  margin-bottom: 14px;
+}
+
+.featuredNoteText {
+  font-family: var(--font-heading);
+  font-style: italic;
+  font-size: 16px;
+  line-height: 1.42;
+}
+
+.featuredNoteMeta {
+  font-size: 11px;
+  color: color-mix(in srgb, var(--color-text) 50%, transparent);
+  margin-top: 6px;
+}
+
+.divider {
+  height: 1px;
+  background: var(--color-divider);
+  margin: 16px 0;
+}
+
+.historyLabel {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: color-mix(in srgb, var(--color-text) 55%, transparent);
+  margin-bottom: 6px;
+}
+
+.dateGroup {
+  margin-bottom: 6px;
+}
+
+.dateGroupLabel {
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 13px;
+  color: color-mix(in srgb, var(--color-text) 70%, transparent);
+  padding: 8px 0 2px;
+}
+
+.historyItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--color-divider);
+}
+
+.historyNote {
+  font-size: 13px;
+  font-style: italic;
+  color: color-mix(in srgb, var(--color-text) 78%, transparent);
+  flex: 1;
+}
+
+.historyTime {
+  margin-left: auto;
+  font-size: 11px;
+  color: color-mix(in srgb, var(--color-text) 45%, transparent);
+  white-space: nowrap;
+}

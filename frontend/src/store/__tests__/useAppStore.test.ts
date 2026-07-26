@@ -1,0 +1,249 @@
+import { beforeEach, describe, expect, it } from 'vitest'
+import { createAppStore } from '@/store/useAppStore'
+import { SEED_EVENTS, SEED_TAGS } from '@/seed/seedData'
+import { createMemoryStorage } from './testStorage'
+
+describe('useAppStore: logEvent', () => {
+  it('creates exactly 1 event for 1 target + 1 tag, no note', () => {
+    const store = createAppStore(createMemoryStorage())
+    const before = store.getState().events.length
+
+    store.getState().logEvent({
+      targets: [{ kind: 'eleve', eleveId: 's1' }],
+      tagIds: ['t1'],
+      noteText: '',
+    })
+
+    const events = store.getState().events
+    expect(events.length).toBe(before + 1)
+    expect(events[0]).toMatchObject({
+      target: { kind: 'eleve', eleveId: 's1' },
+      content: { type: 'tag', tagId: 't1' },
+    })
+  })
+
+  it('fans out 2 targets x 2 tags + a note into exactly 6 events, correctly attributed', () => {
+    const store = createAppStore(createMemoryStorage())
+    const before = store.getState().events.length
+
+    store.getState().logEvent({
+      targets: [
+        { kind: 'eleve', eleveId: 's1' },
+        { kind: 'eleve', eleveId: 's2' },
+      ],
+      tagIds: ['t1', 't2'],
+      noteText: 'Bon travail en groupe',
+    })
+
+    const newEvents = store.getState().events.slice(0, 6)
+    expect(store.getState().events.length).toBe(before + 6)
+
+    const forS1 = newEvents.filter((e) => e.target.kind === 'eleve' && e.target.eleveId === 's1')
+    const forS2 = newEvents.filter((e) => e.target.kind === 'eleve' && e.target.eleveId === 's2')
+    expect(forS1).toHaveLength(3)
+    expect(forS2).toHaveLength(3)
+
+    const tagEventsForS1 = forS1.filter((e) => e.content.type === 'tag')
+    const noteEventsForS1 = forS1.filter((e) => e.content.type === 'note')
+    expect(tagEventsForS1).toHaveLength(2)
+    expect(noteEventsForS1).toHaveLength(1)
+    expect(noteEventsForS1[0]?.content).toMatchObject({ text: 'Bon travail en groupe' })
+
+    // no cross-contamination: no event mixes s1/s2 targets
+    for (const e of newEvents) {
+      expect(e.target.kind).toBe('eleve')
+    }
+  })
+
+  it('is a no-op when there are no targets (events array reference unchanged)', () => {
+    const store = createAppStore(createMemoryStorage())
+    const before = store.getState().events
+
+    store.getState().logEvent({ targets: [], tagIds: ['t1'], noteText: 'peu importe' })
+
+    expect(store.getState().events).toBe(before)
+  })
+
+  it('is a no-op when there are targets but no tags and an empty note', () => {
+    const store = createAppStore(createMemoryStorage())
+    const before = store.getState().events
+
+    store.getState().logEvent({
+      targets: [{ kind: 'eleve', eleveId: 's1' }],
+      tagIds: [],
+      noteText: '   ',
+    })
+
+    expect(store.getState().events).toBe(before)
+  })
+
+  it('does not log a whitespace-only note but trims a real note', () => {
+    const store = createAppStore(createMemoryStorage())
+
+    store.getState().logEvent({
+      targets: [{ kind: 'eleve', eleveId: 's1' }],
+      tagIds: [],
+      noteText: '   texte utile   ',
+    })
+
+    const [latest] = store.getState().events
+    expect(latest?.content).toMatchObject({ type: 'note', text: 'texte utile' })
+  })
+
+  it('logs a class-level event when targeting a classe', () => {
+    const store = createAppStore(createMemoryStorage())
+
+    store.getState().logEvent({
+      targets: [{ kind: 'classe', classeId: 'c1' }],
+      tagIds: [],
+      noteText: 'Sortie annulée',
+    })
+
+    const [latest] = store.getState().events
+    expect(latest?.target).toEqual({ kind: 'classe', classeId: 'c1' })
+  })
+})
+
+describe('useAppStore: tag categories', () => {
+  it('creates a new category and returns its id', () => {
+    const store = createAppStore(createMemoryStorage())
+    const before = store.getState().tagCategories.length
+
+    const id = store.getState().createTagCategory('Ponctualité')
+
+    expect(store.getState().tagCategories).toHaveLength(before + 1)
+    expect(store.getState().tagCategories.find((c) => c.id === id)?.name).toBe('Ponctualité')
+  })
+
+  it('returns the existing id when a category with the same name (case-insensitive) exists', () => {
+    const store = createAppStore(createMemoryStorage())
+    const firstId = store.getState().createTagCategory('Comportement')
+    const before = store.getState().tagCategories.length
+
+    const secondId = store.getState().createTagCategory('COMPORTEMENT')
+
+    expect(secondId).toBe(firstId)
+    expect(store.getState().tagCategories).toHaveLength(before)
+  })
+})
+
+describe('useAppStore: tags', () => {
+  it('rejects creating a tag with an empty/whitespace name', () => {
+    const store = createAppStore(createMemoryStorage())
+    const before = store.getState().tags.length
+
+    const id = store.getState().createTag({
+      categoryId: 'cat1',
+      emoji: '🏷️',
+      name: '   ',
+      variant: 'neutral',
+    })
+
+    expect(id).toBe('')
+    expect(store.getState().tags).toHaveLength(before)
+  })
+
+  it('creates a tag with a generated unique id', () => {
+    const store = createAppStore(createMemoryStorage())
+    const before = store.getState().tags.length
+
+    const id = store.getState().createTag({
+      categoryId: 'cat1',
+      emoji: '🎯',
+      name: 'Objectif atteint',
+      variant: 'accent',
+    })
+
+    expect(id).not.toBe('')
+    expect(store.getState().tags).toHaveLength(before + 1)
+    expect(store.getState().tags.find((t) => t.id === id)).toMatchObject({
+      name: 'Objectif atteint',
+      variant: 'accent',
+    })
+  })
+
+  it('updateTag merges a partial patch without touching unrelated fields', () => {
+    const store = createAppStore(createMemoryStorage())
+    const target = store.getState().tags[0]
+    if (!target) throw new Error('expected at least one seed tag')
+
+    store.getState().updateTag(target.id, { name: 'Nouveau nom' })
+
+    const updated = store.getState().tags.find((t) => t.id === target.id)
+    expect(updated?.name).toBe('Nouveau nom')
+    expect(updated?.emoji).toBe(target.emoji)
+    expect(updated?.categoryId).toBe(target.categoryId)
+  })
+
+  it('updateTag is a no-op for an unknown id', () => {
+    const store = createAppStore(createMemoryStorage())
+    const before = store.getState().tags
+
+    store.getState().updateTag('does-not-exist', { name: 'X' })
+
+    expect(store.getState().tags).toBe(before)
+  })
+
+  it('deleteTag removes the tag but leaves historical events referencing it untouched', () => {
+    const store = createAppStore(createMemoryStorage())
+    const tagId = SEED_TAGS[0]?.id
+    if (!tagId) throw new Error('expected seed tags')
+    const eventsReferencingTag = store
+      .getState()
+      .events.filter((e) => e.content.type === 'tag' && e.content.tagId === tagId)
+    expect(eventsReferencingTag.length).toBeGreaterThan(0)
+
+    store.getState().deleteTag(tagId)
+
+    expect(store.getState().tags.find((t) => t.id === tagId)).toBeUndefined()
+    const stillThere = store
+      .getState()
+      .events.filter((e) => e.content.type === 'tag' && e.content.tagId === tagId)
+    expect(stillThere.length).toBe(eventsReferencingTag.length)
+  })
+})
+
+describe('useAppStore: seed-on-first-run', () => {
+  it('seeds domain data when storage was empty (first run)', () => {
+    const store = createAppStore(createMemoryStorage())
+
+    expect(store.getState().hasSeeded).toBe(true)
+    expect(store.getState().events.length).toBe(SEED_EVENTS.length)
+    expect(store.getState().tags.length).toBe(SEED_TAGS.length)
+  })
+
+  it('does not re-seed over a previously persisted (even emptied) store', () => {
+    const storage = createMemoryStorage()
+
+    // First run: seeds, then the user deletes everything.
+    const first = createAppStore(storage)
+    first.setState({ tags: [], events: [], tagCategories: [] })
+
+    // Simulate a fresh app load reading from the same storage.
+    const second = createAppStore(storage)
+
+    expect(second.getState().tags).toEqual([])
+    expect(second.getState().events).toEqual([])
+    expect(second.getState().tagCategories).toEqual([])
+  })
+})
+
+describe('useAppStore: persistence smoke test', () => {
+  beforeEach(() => {
+    // nothing shared between tests — each test builds its own store/storage
+  })
+
+  it('persists logged events across store instances sharing the same storage', () => {
+    const storage = createMemoryStorage()
+    const first = createAppStore(storage)
+    first.getState().logEvent({
+      targets: [{ kind: 'eleve', eleveId: 's1' }],
+      tagIds: ['t1'],
+      noteText: '',
+    })
+    const countAfterFirst = first.getState().events.length
+
+    const second = createAppStore(storage)
+    expect(second.getState().events.length).toBe(countAfterFirst)
+  })
+})

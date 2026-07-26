@@ -1,0 +1,40 @@
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  font-family: var(--font-body);
+  background: none;
+}
+
+button.chip {
+  cursor: pointer;
+}
+
+.accent {
+  background: var(--color-accent-100);
+  color: var(--color-accent-800);
+}
+
+.neutral {
+  background: var(--color-neutral-100);
+  color: var(--color-neutral-800);
+}
+
+.outline {
+  border-color: var(--color-accent);
+  color: var(--color-accent-700);
+}
+
+.selected {
+  background: var(--color-accent-700);
+  border-color: var(--color-accent-700);
+  color: #fff;
+}
+
+.ghost {
+  color: color-mix(in srgb, var(--color-text) 40%, transparent);
+}

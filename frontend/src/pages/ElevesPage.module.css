@@ -1,0 +1,37 @@
+.page {
+  padding: 24px 20px 24px;
+}
+
+.title {
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 27px;
+  margin-bottom: 16px;
+}
+
+.search {
+  margin-bottom: 16px;
+}
+
+.studentRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--color-divider);
+  width: 100%;
+  background: none;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+}
+
+.studentName {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.studentClass {
+  font-size: 11px;
+  color: color-mix(in srgb, var(--color-text) 50%, transparent);
+}
