@@ -8,7 +8,6 @@ import { TagEditorSheet } from '@/components/tagEditor/TagEditorSheet'
 import { DashboardPage } from '@/pages/DashboardPage'
 import { ClassesPage } from '@/pages/ClassesPage'
 import { DossierPage } from '@/pages/DossierPage'
-import { ElevesPage } from '@/pages/ElevesPage'
 import { SettingsPage } from '@/pages/SettingsPage'
 import { TagsPage } from '@/pages/TagsPage'
 import styles from './App.module.css'
@@ -38,7 +37,6 @@ export default function App() {
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/classes" element={<ClassesPage />} />
-          <Route path="/eleves" element={<ElevesPage />} />
           <Route path="/eleves/:eleveId" element={<DossierPage />} />
           <Route path="/reglages" element={<SettingsPage />} />
           <Route path="/reglages/tags" element={<TagsPage />} />

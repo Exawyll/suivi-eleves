@@ -1,7 +1,14 @@
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAppStore } from '@/store/useAppStore'
-import { selectRecentEvents } from '@/store/selectors'
-import { EventRow, type EventRowContent } from '@/components/ui/EventRow'
+import {
+  selectClasseColor,
+  selectRecentActivityByEleve,
+  selectStudentsMatchingSearch,
+} from '@/store/selectors'
+import { SearchInput } from '@/components/ui/SearchInput'
+import { StudentRow } from '@/components/ui/StudentRow'
+import { EmptyState } from '@/components/ui/EmptyState'
 import { TEACHER_DISPLAY_NAME } from '@/seed/seedData'
 import styles from './DashboardPage.module.css'
 
@@ -14,62 +21,73 @@ function todayLabel(): string {
   return formatted.charAt(0).toUpperCase() + formatted.slice(1)
 }
 
+/**
+ * Accueil doubles as the way into any student: typing swaps the recent-activity
+ * feed for a flat search across every classe, which is how a teacher finds a
+ * student in a meeting without remembering their class.
+ */
 export function DashboardPage() {
   const navigate = useNavigate()
   const eleves = useAppStore((s) => s.eleves)
   const classes = useAppStore((s) => s.classes)
-  const tags = useAppStore((s) => s.tags)
   const events = useAppStore((s) => s.events)
 
-  const recentEvents = selectRecentEvents(events, 6)
+  const [search, setSearch] = useState('')
+  const isSearching = search.trim() !== ''
+
+  const classeNameFor = (classeId: string) => classes.find((c) => c.id === classeId)?.name
+
+  const results = selectStudentsMatchingSearch(eleves, search)
+  const activity = selectRecentActivityByEleve(events, eleves)
 
   return (
     <div className={styles.page}>
-      <div className={styles.greeting}>Bonjour, {TEACHER_DISPLAY_NAME}</div>
+      <h1 className={styles.greeting}>Bonjour, {TEACHER_DISPLAY_NAME}</h1>
       <div className={styles.date}>{todayLabel()}</div>
-      <div className={styles.sectionLabel}>Activité récente</div>
 
-      {recentEvents.map((event) => {
-        let title: string
-        let subtitle: string | undefined
-        let isClasse = false
-        let onClick: (() => void) | undefined
+      <div className={styles.search}>
+        <SearchInput
+          value={search}
+          onChange={setSearch}
+          placeholder="Rechercher un élève, toutes classes…"
+        />
+      </div>
 
-        if (event.target.kind === 'eleve') {
-          const eleveId = event.target.eleveId
-          const eleve = eleves.find((e) => e.id === eleveId)
-          title = eleve?.name ?? ''
-          const classe = eleve ? classes.find((c) => c.id === eleve.classeId) : undefined
-          subtitle = classe?.name
-          onClick = () => navigate(`/eleves/${eleveId}`)
-        } else {
-          const classeId = event.target.classeId
-          const classe = classes.find((c) => c.id === classeId)
-          title = classe ? `${classe.name} (classe)` : ''
-          isClasse = true
-        }
-
-        let content: EventRowContent
-        if (event.content.type === 'note') {
-          content = { kind: 'note', text: event.content.text }
-        } else {
-          const tagId = event.content.tagId
-          const tag = tags.find((t) => t.id === tagId)
-          content = tag ? { kind: 'tag', tag } : { kind: 'tag-ghost' }
-        }
-
-        return (
-          <EventRow
-            key={event.id}
-            title={title}
-            subtitle={subtitle}
-            isClasse={isClasse}
-            time={event.timeLabel}
-            content={content}
-            onClick={onClick}
-          />
-        )
-      })}
+      {isSearching ? (
+        <>
+          <h2 className={styles.sectionLabel}>Résultats</h2>
+          {results.length === 0 ? (
+            <EmptyState message="Aucun élève ne correspond à cette recherche." />
+          ) : (
+            results.map((eleve) => (
+              <StudentRow
+                key={eleve.id}
+                name={eleve.name}
+                classeName={classeNameFor(eleve.classeId)}
+                onClick={() => navigate(`/eleves/${eleve.id}`)}
+              />
+            ))
+          )}
+        </>
+      ) : (
+        <>
+          <h2 className={styles.sectionLabel}>Activité récente</h2>
+          {activity.length === 0 ? (
+            <EmptyState message="Aucune activité pour le moment." />
+          ) : (
+            activity.map(({ eleve, timeLabel }) => (
+              <StudentRow
+                key={eleve.id}
+                name={eleve.name}
+                classeName={classeNameFor(eleve.classeId)}
+                color={selectClasseColor(classes, eleve.classeId)}
+                time={timeLabel}
+                onClick={() => navigate(`/eleves/${eleve.id}`)}
+              />
+            ))
+          )}
+        </>
+      )}
     </div>
   )
 }

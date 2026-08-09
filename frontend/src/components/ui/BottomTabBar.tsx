@@ -1,11 +1,10 @@
 import { Link, useLocation } from 'react-router-dom'
-import { ClassesIcon, DashboardIcon, ElevesIcon, ReglagesIcon } from '@/components/icons/NavIcons'
+import { ClassesIcon, DashboardIcon, ReglagesIcon } from '@/components/icons/NavIcons'
 import styles from './BottomTabBar.module.css'
 
 const TABS = [
   { to: '/dashboard', prefix: '/dashboard', label: 'Accueil', Icon: DashboardIcon },
   { to: '/classes', prefix: '/classes', label: 'Classes', Icon: ClassesIcon },
-  { to: '/eleves', prefix: '/eleves', label: 'Élèves', Icon: ElevesIcon },
   { to: '/reglages', prefix: '/reglages', label: 'Réglages', Icon: ReglagesIcon },
 ]
 

@@ -1,7 +1,5 @@
 import type { Id, TagVariant } from './domain'
 
-export type TabRoute = 'dashboard' | 'classes' | 'eleves' | 'reglages'
-
 export type QuickEntryContext =
   { kind: 'none' } | { kind: 'classe'; classeId: Id } | { kind: 'eleve'; eleveIds: Id[] }
 
