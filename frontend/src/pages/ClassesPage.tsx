@@ -116,10 +116,10 @@ export function ClassesPage() {
                   className={styles.studentRow}
                   onClick={() => navigate(`/eleves/${student.id}`)}
                 >
-                  <Avatar name={student.name} />
+                  <Avatar name={student.name} color={activeColor} />
                   <span className={styles.studentName}>{student.name}</span>
                   {tag ? (
-                    <TagChip emoji={tag.emoji} name={tag.name} variant={tag.variant} />
+                    <TagChip emoji={tag.emoji} name={tag.name} variant={tag.variant} compact />
                   ) : (
                     <span className={styles.noTag}>—</span>
                   )}

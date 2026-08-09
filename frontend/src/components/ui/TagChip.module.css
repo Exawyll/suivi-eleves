@@ -53,3 +53,10 @@ button.chip {
   color: var(--color-text-35);
   border-color: var(--color-sand);
 }
+
+/* Roster density: the mockup drops the chip a point there so the student's
+   name keeps its line. */
+.compact {
+  font-size: 11px;
+  padding: 4px 10px;
+}
