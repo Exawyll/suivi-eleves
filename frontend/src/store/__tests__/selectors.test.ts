@@ -1,10 +1,15 @@
 import { describe, expect, it } from 'vitest'
-import type { Eleve, EventItem } from '@/types/domain'
+import type { Classe, Eleve, EventItem } from '@/types/domain'
 import {
+  CLASSE_COLOR_COUNT,
   resolveQuickEntryTargets,
+  selectActiveClasse,
+  selectClasseColor,
+  selectClasseNotes,
   selectClassesByEtablissement,
   selectEventsGroupedByDateLabel,
   selectMostRecentTagForEleve,
+  selectOrderedClasseTabs,
   selectRecentEvents,
   selectRecentNotesForEleve,
   selectStudentsMatchingSearch,
@@ -172,5 +177,104 @@ describe('resolveQuickEntryTargets', () => {
 
   it('resolves a none context to an empty target list', () => {
     expect(resolveQuickEntryTargets({ kind: 'none' })).toEqual([])
+  })
+})
+
+describe('selectClasseColor', () => {
+  it('gives each classe a distinct token and keeps it stable across calls', () => {
+    const first = selectClasseColor(SEED_CLASSES, 'c1')
+    const second = selectClasseColor(SEED_CLASSES, 'c2')
+
+    expect(first).toBe('var(--color-classe-1)')
+    expect(second).toBe('var(--color-classe-2)')
+    expect(selectClasseColor(SEED_CLASSES, 'c1')).toBe(first)
+  })
+
+  it('wraps around once past the number of available colours', () => {
+    const many: Classe[] = Array.from({ length: CLASSE_COLOR_COUNT + 1 }, (_, i) => ({
+      id: `c${i}`,
+      etablissementId: 'e1',
+      name: `Classe ${i}`,
+      niveau: '',
+    }))
+
+    expect(selectClasseColor(many, `c${CLASSE_COLOR_COUNT}`)).toBe(selectClasseColor(many, 'c0'))
+  })
+
+  it('falls back to the first colour for an unknown classe', () => {
+    expect(selectClasseColor(SEED_CLASSES, 'nope')).toBe('var(--color-classe-1)')
+  })
+})
+
+describe('selectActiveClasse', () => {
+  it('returns the stored classe when it still exists', () => {
+    expect(selectActiveClasse(SEED_CLASSES, 'c2')?.id).toBe('c2')
+  })
+
+  it('falls back to the first classe when the stored id is stale', () => {
+    expect(selectActiveClasse(SEED_CLASSES, 'deleted-classe')?.id).toBe(SEED_CLASSES[0]?.id)
+  })
+
+  it('falls back to the first classe when nothing is stored', () => {
+    expect(selectActiveClasse(SEED_CLASSES, null)?.id).toBe(SEED_CLASSES[0]?.id)
+  })
+
+  it('returns undefined when there is no classe at all', () => {
+    expect(selectActiveClasse([], 'c1')).toBeUndefined()
+  })
+})
+
+describe('selectOrderedClasseTabs', () => {
+  it('moves the pinned classe to the front, keeping the others in order', () => {
+    const ordered = selectOrderedClasseTabs(SEED_CLASSES, 'c3')
+
+    expect(ordered.map((c) => c.id)).toEqual(['c3', 'c1', 'c2'])
+  })
+
+  it('keeps the natural order when nothing is pinned', () => {
+    expect(selectOrderedClasseTabs(SEED_CLASSES, null)).toEqual(SEED_CLASSES)
+  })
+
+  it('keeps the natural order when the pinned classe no longer exists', () => {
+    expect(selectOrderedClasseTabs(SEED_CLASSES, 'deleted-classe')).toEqual(SEED_CLASSES)
+  })
+})
+
+describe('selectClasseNotes', () => {
+  it('keeps only note-type events for that classe, most recent first', () => {
+    const events = [
+      makeEvent({
+        id: 'old-note',
+        target: { kind: 'classe', classeId: 'c1' },
+        content: { type: 'note', text: 'ancienne' },
+        createdAt: '2026-01-01T08:00:00.000Z',
+      }),
+      makeEvent({
+        id: 'classe-tag',
+        target: { kind: 'classe', classeId: 'c1' },
+        content: { type: 'tag', tagId: 't1' },
+        createdAt: '2026-01-02T08:00:00.000Z',
+      }),
+      makeEvent({
+        id: 'new-note',
+        target: { kind: 'classe', classeId: 'c1' },
+        content: { type: 'note', text: 'récente' },
+        createdAt: '2026-01-03T08:00:00.000Z',
+      }),
+      makeEvent({
+        id: 'other-classe',
+        target: { kind: 'classe', classeId: 'c2' },
+        content: { type: 'note', text: 'autre classe' },
+        createdAt: '2026-01-04T08:00:00.000Z',
+      }),
+      makeEvent({
+        id: 'eleve-note',
+        target: { kind: 'eleve', eleveId: 's1' },
+        content: { type: 'note', text: 'élève' },
+        createdAt: '2026-01-05T08:00:00.000Z',
+      }),
+    ]
+
+    expect(selectClasseNotes(events, 'c1').map((e) => e.id)).toEqual(['new-note', 'old-note'])
   })
 })

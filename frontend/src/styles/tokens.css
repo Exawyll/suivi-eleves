@@ -70,6 +70,16 @@
   --color-accent-2-800: #573d14;
   --color-accent-2-900: #382810;
 
+  /* Divider colours for the Classes screen. The handoff mockup hardcodes a bright
+     primary palette that clashes with this warm "classical" design system, so these
+     are muted hues drawn from the accent/neutral ramps instead. All five carry
+     enough contrast to sit under white text. */
+  --color-classe-1: #7d5411;
+  --color-classe-2: #605d5d;
+  --color-classe-3: #8a5a3b;
+  --color-classe-4: #5c6b52;
+  --color-classe-5: #7a4f5e;
+
   --font-heading: 'Cormorant Garamond', system-ui, sans-serif;
   --font-heading-weight: 600;
   --font-body: 'Lora', system-ui, sans-serif;
