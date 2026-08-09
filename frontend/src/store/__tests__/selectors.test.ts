@@ -9,6 +9,7 @@ import {
   selectEventsGroupedByDateLabel,
   selectMostRecentTagForEleve,
   selectOrderedClasseTabs,
+  selectRecentActivityByEleve,
   selectRecentEvents,
   selectRecentNotesForEleve,
   selectStudentsMatchingSearch,
@@ -267,5 +268,97 @@ describe('selectClasseNotes', () => {
     ]
 
     expect(selectClasseNotes(events, 'c1').map((e) => e.id)).toEqual(['new-note', 'old-note'])
+  })
+})
+
+describe('selectRecentActivityByEleve', () => {
+  const eleves: Eleve[] = [
+    { id: 's1', classeId: 'c1', name: 'Lina Haddad' },
+    { id: 's2', classeId: 'c1', name: 'Noah Girard' },
+    { id: 's3', classeId: 'c2', name: 'Adam Roche' },
+  ]
+
+  it('keeps only each student’s most recent event, newest student first', () => {
+    const events = [
+      makeEvent({
+        id: 's1-old',
+        target: { kind: 'eleve', eleveId: 's1' },
+        timeLabel: '08:00',
+        createdAt: '2026-01-01T08:00:00.000Z',
+      }),
+      makeEvent({
+        id: 's2-only',
+        target: { kind: 'eleve', eleveId: 's2' },
+        timeLabel: '09:00',
+        createdAt: '2026-01-01T09:00:00.000Z',
+      }),
+      makeEvent({
+        id: 's1-recent',
+        target: { kind: 'eleve', eleveId: 's1' },
+        timeLabel: '10:00',
+        createdAt: '2026-01-01T10:00:00.000Z',
+      }),
+    ]
+
+    const activity = selectRecentActivityByEleve(events, eleves)
+
+    expect(activity.map((a) => a.eleve.id)).toEqual(['s1', 's2'])
+    // s1 carries the time of its most recent event, not its first.
+    expect(activity[0]?.timeLabel).toBe('10:00')
+  })
+
+  it('excludes class-level events', () => {
+    const events = [
+      makeEvent({
+        id: 'classe-note',
+        target: { kind: 'classe', classeId: 'c1' },
+        createdAt: '2026-01-02T10:00:00.000Z',
+      }),
+      makeEvent({
+        id: 'eleve-note',
+        target: { kind: 'eleve', eleveId: 's1' },
+        createdAt: '2026-01-01T10:00:00.000Z',
+      }),
+    ]
+
+    expect(selectRecentActivityByEleve(events, eleves).map((a) => a.eleve.id)).toEqual(['s1'])
+  })
+
+  it('honours the limit, counting students rather than events', () => {
+    const events = eleves.flatMap((eleve, i) => [
+      makeEvent({
+        id: `${eleve.id}-a`,
+        target: { kind: 'eleve', eleveId: eleve.id },
+        createdAt: `2026-01-0${i + 1}T09:00:00.000Z`,
+      }),
+      makeEvent({
+        id: `${eleve.id}-b`,
+        target: { kind: 'eleve', eleveId: eleve.id },
+        createdAt: `2026-01-0${i + 1}T10:00:00.000Z`,
+      }),
+    ])
+
+    expect(selectRecentActivityByEleve(events, eleves, 2)).toHaveLength(2)
+  })
+
+  it('skips events whose student no longer exists', () => {
+    const events = [
+      makeEvent({
+        id: 'ghost',
+        target: { kind: 'eleve', eleveId: 'deleted-eleve' },
+        createdAt: '2026-01-02T10:00:00.000Z',
+      }),
+      makeEvent({
+        id: 'real',
+        target: { kind: 'eleve', eleveId: 's1' },
+        createdAt: '2026-01-01T10:00:00.000Z',
+      }),
+    ]
+
+    expect(selectRecentActivityByEleve(events, eleves).map((a) => a.eleve.id)).toEqual(['s1'])
+  })
+
+  it('returns an empty list when there is no student activity', () => {
+    expect(selectRecentActivityByEleve([], eleves)).toEqual([])
   })
 })

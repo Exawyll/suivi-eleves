@@ -79,22 +79,6 @@ export function ClassesIcon({ active }: NavIconProps) {
   )
 }
 
-export function ElevesIcon({ active }: NavIconProps) {
-  const stroke = strokeColor(active)
-  return (
-    <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true">
-      <circle cx="10" cy="6.5" r="3.3" stroke={stroke} strokeWidth="1.6" fill="none" />
-      <path
-        d="M3.5 17c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6"
-        stroke={stroke}
-        strokeWidth="1.6"
-        fill="none"
-        strokeLinecap="round"
-      />
-    </svg>
-  )
-}
-
 export function ReglagesIcon({ active }: NavIconProps) {
   const stroke = strokeColor(active)
   return (
