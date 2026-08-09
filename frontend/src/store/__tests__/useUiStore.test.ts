@@ -173,9 +173,16 @@ describe('useUiStore: tag editor', () => {
 })
 
 describe('useUiStore: dispatch to the app store', () => {
+  // Resets the shared UI singleton between tests without touching an ambient
+  // `localStorage`: Node 26 ships its own experimental Web Storage global that
+  // shadows jsdom's and reads as undefined unless --localstorage-file is passed.
+  // Assertions below are relative (`before + 1`, freshly-read `tags[0]`), so the
+  // domain store needs no reset.
   beforeEach(() => {
-    localStorage.clear()
-    useAppStore.persist.clearStorage()
+    useUiStore.setState({
+      quickEntry: DEFAULT_QUICK_ENTRY,
+      tagEditor: DEFAULT_TAG_EDITOR,
+    })
   })
 
   it('submitQuickEntry logs an event and closes the sheet', () => {
