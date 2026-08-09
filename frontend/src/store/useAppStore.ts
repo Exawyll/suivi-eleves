@@ -22,6 +22,13 @@ import { resolveDefaultStorage } from '@/store/memoryStorage'
 import { generateId } from '@/utils/id'
 import { toDateLabel, toTimeLabel } from '@/utils/dateLabels'
 
+export interface CreateClasseInput {
+  etablissementId: Id
+  name: string
+  niveau?: string
+  eleveNames: string[]
+}
+
 export interface LogEventInput {
   targets: EventTarget[]
   tagIds: Id[]
@@ -46,6 +53,8 @@ export interface AppState {
   createTag: (input: Omit<Tag, 'id'>) => Id
   updateTag: (id: Id, patch: Partial<Omit<Tag, 'id'>>) => void
   deleteTag: (id: Id) => void
+  createEtablissement: (name: string) => Id
+  createClasseWithEleves: (input: CreateClasseInput) => Id
   setActiveClasse: (id: Id) => void
   togglePrincipalClasse: (id: Id) => void
   renameClasse: (id: Id, name: string) => void
@@ -57,6 +66,8 @@ type AppActions =
   | 'createTag'
   | 'updateTag'
   | 'deleteTag'
+  | 'createEtablissement'
+  | 'createClasseWithEleves'
   | 'setActiveClasse'
   | 'togglePrincipalClasse'
   | 'renameClasse'
@@ -155,6 +166,44 @@ export function createAppStore(storage: StateStorage = resolveDefaultStorage()) 
 
         deleteTag: (id) => {
           set((state) => ({ tags: state.tags.filter((t) => t.id !== id) }))
+        },
+
+        createEtablissement: (name) => {
+          const trimmed = name.trim()
+          if (trimmed === '') return ''
+          const existing = get().etablissements.find(
+            (e) => e.name.toLowerCase() === trimmed.toLowerCase(),
+          )
+          if (existing) return existing.id
+          const id = generateId()
+          set((state) => ({ etablissements: [...state.etablissements, { id, name: trimmed }] }))
+          return id
+        },
+
+        /**
+         * Creates the classe and its students in one write, then opens it: the
+         * teacher has just imported a roster and wants to see it.
+         */
+        createClasseWithEleves: ({ etablissementId, name, niveau = '', eleveNames }) => {
+          const trimmedName = name.trim()
+          if (trimmedName === '') return ''
+          if (!get().etablissements.some((e) => e.id === etablissementId)) return ''
+
+          const classeId = generateId()
+          const eleves: Eleve[] = eleveNames
+            .map((eleveName) => eleveName.trim())
+            .filter((eleveName) => eleveName !== '')
+            .map((eleveName) => ({ id: generateId(), classeId, name: eleveName }))
+
+          set((state) => ({
+            classes: [
+              ...state.classes,
+              { id: classeId, etablissementId, name: trimmedName, niveau },
+            ],
+            eleves: [...state.eleves, ...eleves],
+            activeClasseId: classeId,
+          }))
+          return classeId
         },
 
         setActiveClasse: (id) => {

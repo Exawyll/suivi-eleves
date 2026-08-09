@@ -353,3 +353,105 @@ describe('useAppStore: persistence smoke test', () => {
     expect(second.getState().events.length).toBe(countAfterFirst)
   })
 })
+
+describe('useAppStore: établissements & class import', () => {
+  it('creates an établissement and returns its id', () => {
+    const store = createAppStore(createMemoryStorage())
+    const before = store.getState().etablissements.length
+
+    const id = store.getState().createEtablissement('Lycée Victor Hugo')
+
+    expect(store.getState().etablissements).toHaveLength(before + 1)
+    expect(store.getState().etablissements.find((e) => e.id === id)?.name).toBe('Lycée Victor Hugo')
+  })
+
+  it('trims the name and rejects an empty one', () => {
+    const store = createAppStore(createMemoryStorage())
+    const before = store.getState().etablissements
+
+    expect(store.getState().createEtablissement('   ')).toBe('')
+    expect(store.getState().etablissements).toBe(before)
+
+    const id = store.getState().createEtablissement('  Collège Jaurès  ')
+    expect(store.getState().etablissements.find((e) => e.id === id)?.name).toBe('Collège Jaurès')
+  })
+
+  it('reuses an existing établissement with the same name, case-insensitively', () => {
+    const store = createAppStore(createMemoryStorage())
+    const firstId = store.getState().createEtablissement('Collège Jaurès')
+    const before = store.getState().etablissements.length
+
+    const secondId = store.getState().createEtablissement('COLLÈGE JAURÈS')
+
+    expect(secondId).toBe(firstId)
+    expect(store.getState().etablissements).toHaveLength(before)
+  })
+
+  it('creates a classe with its students and opens it', () => {
+    const store = createAppStore(createMemoryStorage())
+    const etablissementId = store.getState().etablissements[0]?.id
+    if (!etablissementId) throw new Error('expected a seed établissement')
+
+    const classeId = store.getState().createClasseWithEleves({
+      etablissementId,
+      name: '6e C',
+      eleveNames: ['Lina Haddad', 'Noah Girard'],
+    })
+
+    const classe = store.getState().classes.find((c) => c.id === classeId)
+    expect(classe).toMatchObject({ name: '6e C', etablissementId })
+    expect(store.getState().eleves.filter((e) => e.classeId === classeId)).toHaveLength(2)
+    // The teacher just imported it — show it.
+    expect(store.getState().activeClasseId).toBe(classeId)
+  })
+
+  it('skips blank student names in the imported roster', () => {
+    const store = createAppStore(createMemoryStorage())
+    const etablissementId = store.getState().etablissements[0]?.id
+    if (!etablissementId) throw new Error('expected a seed établissement')
+
+    const classeId = store.getState().createClasseWithEleves({
+      etablissementId,
+      name: '6e D',
+      eleveNames: ['Lina Haddad', '   ', '', 'Noah Girard'],
+    })
+
+    expect(store.getState().eleves.filter((e) => e.classeId === classeId)).toHaveLength(2)
+  })
+
+  it('gives every imported student a distinct id', () => {
+    const store = createAppStore(createMemoryStorage())
+    const etablissementId = store.getState().etablissements[0]?.id
+    if (!etablissementId) throw new Error('expected a seed établissement')
+
+    // Two students genuinely sharing a name must stay two records.
+    const classeId = store.getState().createClasseWithEleves({
+      etablissementId,
+      name: '6e E',
+      eleveNames: ['Marie Dupont', 'Marie Dupont'],
+    })
+
+    const ids = store
+      .getState()
+      .eleves.filter((e) => e.classeId === classeId)
+      .map((e) => e.id)
+    expect(new Set(ids).size).toBe(2)
+  })
+
+  it('rejects a classe with an empty name or an unknown établissement', () => {
+    const store = createAppStore(createMemoryStorage())
+    const etablissementId = store.getState().etablissements[0]?.id
+    if (!etablissementId) throw new Error('expected a seed établissement')
+    const before = store.getState().classes
+
+    expect(
+      store.getState().createClasseWithEleves({ etablissementId, name: '  ', eleveNames: ['A'] }),
+    ).toBe('')
+    expect(
+      store
+        .getState()
+        .createClasseWithEleves({ etablissementId: 'nope', name: '6e F', eleveNames: ['A'] }),
+    ).toBe('')
+    expect(store.getState().classes).toBe(before)
+  })
+})
