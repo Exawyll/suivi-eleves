@@ -173,7 +173,10 @@ export function createAppStore(storage: StateStorage = resolveDefaultStorage()) 
           const trimmed = name.trim()
           if (trimmed === '') return
           set((state) => {
-            if (!state.classes.some((c) => c.id === id)) return {}
+            const current = state.classes.find((c) => c.id === id)
+            // Committing an unchanged name must not write: once the sync engine
+            // lands it would mark the record dirty and push a pointless mutation.
+            if (!current || current.name === trimmed) return {}
             return {
               classes: state.classes.map((c) => (c.id === id ? { ...c, name: trimmed } : c)),
             }

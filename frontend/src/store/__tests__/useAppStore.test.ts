@@ -263,6 +263,28 @@ describe('useAppStore: classes', () => {
     expect(store.getState().classes.find((c) => c.id === classeId)?.name).toBe('6e A')
   })
 
+  it('renameClasse is a no-op when the name is unchanged', () => {
+    const store = createAppStore(createMemoryStorage())
+    const classe = store.getState().classes[0]
+    if (!classe) throw new Error('expected seed classes')
+    const before = store.getState().classes
+
+    // Committing the field without editing, and the same name re-padded.
+    store.getState().renameClasse(classe.id, classe.name)
+    store.getState().renameClasse(classe.id, `  ${classe.name}  `)
+
+    expect(store.getState().classes).toBe(before)
+  })
+
+  it('renameClasse ignores an unknown classe', () => {
+    const store = createAppStore(createMemoryStorage())
+    const before = store.getState().classes
+
+    store.getState().renameClasse('does-not-exist', 'Peu importe')
+
+    expect(store.getState().classes).toBe(before)
+  })
+
   it('renameClasse ignores an empty or whitespace-only name', () => {
     const store = createAppStore(createMemoryStorage())
     const before = store.getState().classes

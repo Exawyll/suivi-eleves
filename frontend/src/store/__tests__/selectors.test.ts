@@ -6,7 +6,6 @@ import {
   selectActiveClasse,
   selectClasseColor,
   selectClasseNotes,
-  selectClassesByEtablissement,
   selectEventsGroupedByDateLabel,
   selectMostRecentTagForEleve,
   selectOrderedClasseTabs,
@@ -14,7 +13,7 @@ import {
   selectRecentNotesForEleve,
   selectStudentsMatchingSearch,
 } from '@/store/selectors'
-import { SEED_CLASSES, SEED_ETABLISSEMENTS, SEED_TAGS } from '@/seed/seedData'
+import { SEED_CLASSES, SEED_TAGS } from '@/seed/seedData'
 
 function makeEvent(overrides: Partial<EventItem> & Pick<EventItem, 'id'>): EventItem {
   return {
@@ -92,14 +91,6 @@ describe('selectEventsGroupedByDateLabel', () => {
     expect(groups[0]).toMatchObject({ label: "Aujourd'hui" })
     expect(groups[0]?.items.map((e) => e.id)).toEqual(['today-1', 'today-2'])
     expect(groups[1]).toMatchObject({ label: 'Hier' })
-  })
-})
-
-describe('selectClassesByEtablissement', () => {
-  it('groups seed classes under their établissement', () => {
-    const groups = selectClassesByEtablissement(SEED_ETABLISSEMENTS, SEED_CLASSES)
-    const jeanMoulin = groups.find((g) => g.etablissement.name === 'Collège Jean Moulin')
-    expect(jeanMoulin?.classes.map((c) => c.name).sort()).toEqual(['4e A', '5e B'])
   })
 })
 
