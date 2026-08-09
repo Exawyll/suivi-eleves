@@ -24,6 +24,7 @@ export function TagCategoryPicker({ groups, selectedTagIds, onToggle }: TagCateg
                   emoji={tag.emoji}
                   name={tag.name}
                   variant={tag.variant}
+                  mode="stamp"
                   selected={selectedTagIds.includes(tag.id)}
                   onClick={() => onToggle(tag.id)}
                 />

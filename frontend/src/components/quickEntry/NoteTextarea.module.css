@@ -1,11 +1,16 @@
 .textarea {
   width: 100%;
   box-sizing: border-box;
-  min-height: 70px;
+  min-height: 64px;
   padding: 10px 12px;
-  border: 1px solid var(--color-divider);
-  border-radius: 8px;
+  border: var(--border-ink);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
   font-family: var(--font-body);
   font-size: 13px;
   resize: vertical;
+}
+
+.textarea::placeholder {
+  color: var(--color-text-45);
 }

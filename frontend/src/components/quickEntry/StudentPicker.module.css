@@ -9,8 +9,9 @@
 .list {
   max-height: 180px;
   overflow-y: auto;
-  border: 1px solid var(--color-divider);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card-sm);
 }
 
 .row {
@@ -18,9 +19,12 @@
   align-items: center;
   gap: 10px;
   padding: 9px 12px;
-  border-bottom: 1px solid var(--color-divider);
+  border-bottom: 1px solid var(--color-rule);
   width: 100%;
   background: none;
+  border-left: none;
+  border-right: none;
+  border-top: none;
   text-align: left;
   font: inherit;
   color: inherit;
@@ -36,11 +40,12 @@
 }
 
 .className {
-  color: color-mix(in srgb, var(--color-text) 50%, transparent);
+  color: var(--color-text-50);
   font-size: 11px;
 }
 
 .check {
-  color: var(--color-accent-700);
-  font-size: 13px;
+  color: var(--color-confirm);
+  font-size: 14px;
+  font-weight: 800;
 }
