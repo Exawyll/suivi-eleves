@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { createAppStore } from '@/store/useAppStore'
-import { SEED_EVENTS, SEED_TAGS } from '@/seed/seedData'
+import { SEED_CLASSES, SEED_EVENTS, SEED_TAGS } from '@/seed/seedData'
 import { createMemoryStorage } from './testStorage'
 
 describe('useAppStore: logEvent', () => {
@@ -200,6 +200,112 @@ describe('useAppStore: tags', () => {
       .getState()
       .events.filter((e) => e.content.type === 'tag' && e.content.tagId === tagId)
     expect(stillThere.length).toBe(eventsReferencingTag.length)
+  })
+})
+
+describe('useAppStore: classes', () => {
+  it('starts with the first classe open and none pinned', () => {
+    const store = createAppStore(createMemoryStorage())
+
+    expect(store.getState().activeClasseId).toBe(SEED_CLASSES[0]?.id)
+    expect(store.getState().principalClasseId).toBeNull()
+  })
+
+  it('setActiveClasse switches the open divider', () => {
+    const store = createAppStore(createMemoryStorage())
+    const second = SEED_CLASSES[1]
+    if (!second) throw new Error('expected at least two seed classes')
+
+    store.getState().setActiveClasse(second.id)
+
+    expect(store.getState().activeClasseId).toBe(second.id)
+  })
+
+  it('setActiveClasse ignores an unknown classe', () => {
+    const store = createAppStore(createMemoryStorage())
+    const before = store.getState().activeClasseId
+
+    store.getState().setActiveClasse('does-not-exist')
+
+    expect(store.getState().activeClasseId).toBe(before)
+  })
+
+  it('togglePrincipalClasse pins, then unpins the same classe', () => {
+    const store = createAppStore(createMemoryStorage())
+    const classeId = SEED_CLASSES[1]?.id
+    if (!classeId) throw new Error('expected at least two seed classes')
+
+    store.getState().togglePrincipalClasse(classeId)
+    expect(store.getState().principalClasseId).toBe(classeId)
+
+    store.getState().togglePrincipalClasse(classeId)
+    expect(store.getState().principalClasseId).toBeNull()
+  })
+
+  it('togglePrincipalClasse moves the pin when a different classe is starred', () => {
+    const store = createAppStore(createMemoryStorage())
+    const [first, second] = SEED_CLASSES
+    if (!first || !second) throw new Error('expected at least two seed classes')
+
+    store.getState().togglePrincipalClasse(first.id)
+    store.getState().togglePrincipalClasse(second.id)
+
+    expect(store.getState().principalClasseId).toBe(second.id)
+  })
+
+  it('renameClasse trims the new name', () => {
+    const store = createAppStore(createMemoryStorage())
+    const classeId = SEED_CLASSES[0]?.id
+    if (!classeId) throw new Error('expected seed classes')
+
+    store.getState().renameClasse(classeId, '  6e A  ')
+
+    expect(store.getState().classes.find((c) => c.id === classeId)?.name).toBe('6e A')
+  })
+
+  it('renameClasse is a no-op when the name is unchanged', () => {
+    const store = createAppStore(createMemoryStorage())
+    const classe = store.getState().classes[0]
+    if (!classe) throw new Error('expected seed classes')
+    const before = store.getState().classes
+
+    // Committing the field without editing, and the same name re-padded.
+    store.getState().renameClasse(classe.id, classe.name)
+    store.getState().renameClasse(classe.id, `  ${classe.name}  `)
+
+    expect(store.getState().classes).toBe(before)
+  })
+
+  it('renameClasse ignores an unknown classe', () => {
+    const store = createAppStore(createMemoryStorage())
+    const before = store.getState().classes
+
+    store.getState().renameClasse('does-not-exist', 'Peu importe')
+
+    expect(store.getState().classes).toBe(before)
+  })
+
+  it('renameClasse ignores an empty or whitespace-only name', () => {
+    const store = createAppStore(createMemoryStorage())
+    const before = store.getState().classes
+
+    store.getState().renameClasse(before[0]?.id ?? '', '   ')
+
+    expect(store.getState().classes).toBe(before)
+  })
+
+  it('persists the open and pinned classe across store instances', () => {
+    const storage = createMemoryStorage()
+    const second = SEED_CLASSES[1]
+    if (!second) throw new Error('expected at least two seed classes')
+
+    const first = createAppStore(storage)
+    first.getState().setActiveClasse(second.id)
+    first.getState().togglePrincipalClasse(second.id)
+
+    const reloaded = createAppStore(storage)
+    expect(reloaded.getState().activeClasseId).toBe(second.id)
+    expect(reloaded.getState().principalClasseId).toBe(second.id)
   })
 })
 

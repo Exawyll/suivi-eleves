@@ -1,55 +1,105 @@
 .page {
-  padding: 24px 20px;
+  padding: 24px 0;
 }
 
 .title {
   font-family: var(--font-heading);
   font-weight: var(--font-heading-weight);
-  font-size: 30px;
-  margin-bottom: 20px;
+  font-size: 26px;
+  text-align: center;
+  margin: 0 0 16px;
 }
 
-.group {
-  margin-bottom: 22px;
-}
-
-.groupLabel {
-  font-family: var(--font-heading);
-  font-weight: var(--font-heading-weight);
-  font-size: 16px;
-  color: var(--color-section);
-  margin-bottom: 10px;
-}
-
-.classList {
+.binder {
   display: flex;
-  flex-direction: column;
-  gap: 12px;
+  max-width: 360px;
+  margin: 0 auto;
+  padding: 0 20px;
 }
 
-.classRow {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 14px 16px;
-  border: none;
-  border-radius: var(--radius-lg);
+/* The open page of the binder: white paper, its outer edge tinted with the
+   active divider's colour. */
+.panel {
+  flex: 1;
+  min-width: 0;
+  padding: 0 20px 24px;
   background: var(--color-surface);
+  border-right: 3px solid transparent;
+  border-radius: var(--radius-lg) 0 0 var(--radius-lg);
   box-shadow: var(--shadow-card);
-  width: 100%;
-  text-align: left;
-  font: inherit;
-  color: inherit;
 }
 
-.className {
+.panelHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  padding-top: 16px;
+  margin-bottom: 16px;
+}
+
+.panelHeading {
+  min-width: 0;
+}
+
+.classeName {
   font-family: var(--font-heading);
   font-weight: var(--font-heading-weight);
-  font-size: 19px;
+  font-size: 24px;
+  line-height: 1.1;
+  background: none;
+  border: none;
+  padding: 0;
+  color: inherit;
+  text-align: left;
+  cursor: text;
 }
 
-.classMeta {
+.classeMeta {
   font-size: 12px;
   color: var(--color-text-55);
   margin-top: 2px;
+}
+
+/* Outlined in the active classe's colour, set inline from the store. */
+.eventButton {
+  flex-shrink: 0;
+  padding: 8px 14px;
+  border-radius: var(--radius-md);
+  border: 2px solid currentcolor;
+  background: var(--color-surface);
+  font-family: var(--font-body);
+  font-weight: 800;
+  font-size: 12px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.studentRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 0;
+  border-bottom: var(--divider-dashed);
+  width: 100%;
+  background: none;
+  border-left: none;
+  border-right: none;
+  border-top: none;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.studentName {
+  flex: 1;
+  min-width: 0;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.noTag {
+  font-size: 11px;
+  color: var(--color-text-35);
 }

@@ -12,6 +12,8 @@ interface TagChipProps {
    */
   mode?: 'display' | 'stamp'
   selected?: boolean
+  /** Tighter type for the roster, where the chip shares a row with the student's name. */
+  compact?: boolean
   onClick?: () => void
 }
 
@@ -27,13 +29,14 @@ export function TagChip({
   variant,
   mode = 'display',
   selected = false,
+  compact = false,
   onClick,
 }: TagChipProps) {
   const stateClass =
     mode === 'stamp'
       ? ((selected ? styles.selected : styles.unselected) ?? '')
       : VARIANT_CLASS[variant]
-  const className = `${styles.chip} ${stateClass}`
+  const className = `${styles.chip} ${stateClass} ${compact ? styles.compact : ''}`
 
   const content = (
     <>
