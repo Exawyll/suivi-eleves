@@ -50,6 +50,8 @@ export interface AppState {
 
   logEvent: (input: LogEventInput) => void
   createTagCategory: (name: string) => Id
+  renameTagCategory: (id: Id, name: string) => void
+  deleteTagCategory: (id: Id) => void
   createTag: (input: Omit<Tag, 'id'>) => Id
   updateTag: (id: Id, patch: Partial<Omit<Tag, 'id'>>) => void
   deleteTag: (id: Id) => void
@@ -63,6 +65,8 @@ export interface AppState {
 type AppActions =
   | 'logEvent'
   | 'createTagCategory'
+  | 'renameTagCategory'
+  | 'deleteTagCategory'
   | 'createTag'
   | 'updateTag'
   | 'deleteTag'
@@ -147,6 +151,37 @@ export function createAppStore(storage: StateStorage = resolveDefaultStorage()) 
             tagCategories: [...state.tagCategories, { id, name: trimmed }],
           }))
           return id
+        },
+
+        renameTagCategory: (id, name) => {
+          const trimmed = name.trim()
+          if (trimmed === '') return
+          set((state) => {
+            const current = state.tagCategories.find((c) => c.id === id)
+            if (!current || current.name === trimmed) return {}
+            return {
+              tagCategories: state.tagCategories.map((c) =>
+                c.id === id ? { ...c, name: trimmed } : c,
+              ),
+            }
+          })
+        },
+
+        /**
+         * Deleting a category takes its tags with it — a tag without a category
+         * has nowhere to appear in the Tags screen or the Quick Entry sheet.
+         * Past events are deliberately left alone: history is a record of what
+         * happened, and the UI already renders a ghost chip for a tag that no
+         * longer exists.
+         */
+        deleteTagCategory: (id) => {
+          set((state) => {
+            if (!state.tagCategories.some((c) => c.id === id)) return {}
+            return {
+              tagCategories: state.tagCategories.filter((c) => c.id !== id),
+              tags: state.tags.filter((t) => t.categoryId !== id),
+            }
+          })
         },
 
         createTag: (input) => {
