@@ -17,4 +17,4 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY backend/ .
 COPY --from=frontend-build /app/frontend/dist ./static
 
-CMD uvicorn main:app --host 0.0.0.0 --port $PORT
+CMD alembic upgrade head && uvicorn main:app --host 0.0.0.0 --port $PORT

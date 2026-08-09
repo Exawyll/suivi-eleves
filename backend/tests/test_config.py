@@ -23,8 +23,16 @@ def test_database_url_is_rewritten_for_asyncpg(given: str, expected: str) -> Non
 
 
 def test_the_default_dsn_carries_no_credentials() -> None:
-    """Nothing credential-shaped ships in the repository."""
-    assert "@" not in Settings().database_url
+    """Nothing credential-shaped ships in the repository.
+
+    Reads the declared default rather than an instance: Settings() picks up
+    DATABASE_URL from the environment, so in CI this would have asserted
+    against the runner's connection string instead of the committed value.
+    """
+    default = Settings.model_fields["database_url"].default
+
+    assert isinstance(default, str)
+    assert "@" not in default
 
 
 def test_production_refuses_the_development_secret() -> None:
