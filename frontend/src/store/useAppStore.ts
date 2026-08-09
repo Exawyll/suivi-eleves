@@ -18,6 +18,7 @@ import {
   SEED_TAGS,
   SEED_TAG_CATEGORIES,
 } from '@/seed/seedData'
+import { resolveDefaultStorage } from '@/store/memoryStorage'
 import { generateId } from '@/utils/id'
 import { toDateLabel, toTimeLabel } from '@/utils/dateLabels'
 
@@ -64,7 +65,7 @@ function initialDomainState(): Omit<
   }
 }
 
-export function createAppStore(storage: StateStorage = localStorage) {
+export function createAppStore(storage: StateStorage = resolveDefaultStorage()) {
   return create<AppState>()(
     persist(
       (set, get) => ({

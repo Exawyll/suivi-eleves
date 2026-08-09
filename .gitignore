@@ -2,6 +2,7 @@
 # Bundle de handoff exporté depuis claude.ai/design : mockups HTML/CSS/JS,
 # pas du code de production. Le dossier entier est exclu.
 suivi-d-l-ves-hors-ligne/
+suivi-d-l-ves-hors-ligne*/
 
 # Filet de sécurité générique si un futur handoff Claude Design est exporté
 # ailleurs dans le repo (mêmes patterns de fichiers/dossiers) :

@@ -10,7 +10,7 @@ repos:
       - id: detect-private-key
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.8.4
+    rev: v0.16.1
     hooks:
       - id: ruff
         args: [--fix]
@@ -35,4 +35,4 @@ repos:
           bash -c 'echo "Fichier issu du bundle Claude Design (hands-off) : jamais commité, voir .gitignore.";
           exit 1'
         language: system
-        files: '(^|/)_ds/|\.dc\.html$|_ds_manifest\.json$|_adherence\.oxlintrc\.json$|(^|/)\.thumbnail$|^suivi-d-l-ves-hors-ligne/'
+        files: '(^|/)_ds/|\.dc\.html$|_ds_manifest\.json$|_adherence\.oxlintrc\.json$|(^|/)\.thumbnail$|^suivi-d-l-ves-hors-ligne'
