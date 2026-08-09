@@ -7,7 +7,6 @@ import { QuickEntrySheet } from '@/components/quickEntry/QuickEntrySheet'
 import { TagEditorSheet } from '@/components/tagEditor/TagEditorSheet'
 import { DashboardPage } from '@/pages/DashboardPage'
 import { ClassesPage } from '@/pages/ClassesPage'
-import { RosterPage } from '@/pages/RosterPage'
 import { DossierPage } from '@/pages/DossierPage'
 import { ElevesPage } from '@/pages/ElevesPage'
 import { SettingsPage } from '@/pages/SettingsPage'
@@ -39,8 +38,6 @@ export default function App() {
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/classes" element={<ClassesPage />} />
-          <Route path="/classes/:classeId" element={<RosterPage />} />
-          <Route path="/classes/:classeId/eleves/:eleveId" element={<DossierPage />} />
           <Route path="/eleves" element={<ElevesPage />} />
           <Route path="/eleves/:eleveId" element={<DossierPage />} />
           <Route path="/reglages" element={<SettingsPage />} />
