@@ -106,6 +106,46 @@ export function selectEtablissementForClasse(
   return etablissements.find((e) => e.id === classe.etablissementId)
 }
 
+export interface EleveActivity {
+  eleve: Eleve
+  /** Time of that student's most recent event. */
+  timeLabel: string
+}
+
+/**
+ * The Accueil feed: each student's most recent event, newest first, one line per
+ * student.
+ *
+ * Deduplicating matters because logging is bursty — tagging one student three
+ * times in a row would otherwise push everyone else off the screen. Class-level
+ * events are excluded: the feed answers "who have I written about lately", and a
+ * note on a whole classe isn't about any one student.
+ */
+export function selectRecentActivityByEleve(
+  events: EventItem[],
+  eleves: Eleve[],
+  limit = 6,
+): EleveActivity[] {
+  const seen = new Set<Id>()
+  const activity: EleveActivity[] = []
+
+  for (const event of [...events].sort(byCreatedAtDesc)) {
+    if (event.target.kind !== 'eleve') continue
+    const eleveId = event.target.eleveId
+    if (seen.has(eleveId)) continue
+
+    const eleve = eleves.find((e) => e.id === eleveId)
+    // An event whose student no longer exists is skipped, not rendered blank.
+    if (!eleve) continue
+
+    seen.add(eleveId)
+    activity.push({ eleve, timeLabel: event.timeLabel })
+    if (activity.length >= limit) break
+  }
+
+  return activity
+}
+
 export function selectStudentsMatchingSearch(eleves: Eleve[], query: string): Eleve[] {
   const q = query.trim().toLowerCase()
   if (!q) return eleves
