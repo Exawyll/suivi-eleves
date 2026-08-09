@@ -73,7 +73,10 @@ export function DashboardPage() {
         <>
           <h2 className={styles.sectionLabel}>Activité récente</h2>
           {activity.length === 0 ? (
-            <EmptyState message="Aucune activité pour le moment." />
+            {/* Names what the feed actually tracks: class-level notes live on the
+                Classes screen, so "aucune activité" would read as untrue to a
+                teacher who has just written one. */}
+            <EmptyState message="Aucun élève noté pour le moment." />
           ) : (
             activity.map(({ eleve, timeLabel }) => (
               <StudentRow
