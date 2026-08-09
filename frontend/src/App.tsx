@@ -42,6 +42,10 @@ export default function App() {
           <Route path="/eleves/:eleveId" element={<DossierPage />} />
           <Route path="/reglages" element={<SettingsPage />} />
           <Route path="/reglages/tags" element={<TagsPage />} />
+          {/* Anything unmatched lands on the dashboard rather than a blank screen:
+              installed shortcuts and bookmarks can still point at routes this
+              version no longer serves, such as the old /classes/:classeId. */}
+          <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Route>
       </Routes>
     </BrowserRouter>
