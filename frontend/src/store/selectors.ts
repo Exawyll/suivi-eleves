@@ -71,6 +71,42 @@ export function selectClasseForEleve(classes: Classe[], eleve: Eleve): Classe | 
   return classes.find((c) => c.id === eleve.classeId)
 }
 
+/** Number of distinct divider colours available as `--color-classe-N` tokens. */
+export const CLASSE_COLOR_COUNT = 5
+
+/**
+ * Stable CSS colour for a classe's divider, assigned by its position in the list
+ * so a given classe keeps the same colour across screens and reloads.
+ */
+export function selectClasseColor(classes: Classe[], classeId: Id): string {
+  const index = classes.findIndex((c) => c.id === classeId)
+  const slot = index < 0 ? 0 : index % CLASSE_COLOR_COUNT
+  return `var(--color-classe-${slot + 1})`
+}
+
+/**
+ * The classe whose divider is open. Falls back to the first classe when the
+ * stored id is stale (classe deleted) or unset, so the screen is never blank.
+ */
+export function selectActiveClasse(
+  classes: Classe[],
+  activeClasseId: Id | null,
+): Classe | undefined {
+  return classes.find((c) => c.id === activeClasseId) ?? classes[0]
+}
+
+/** Divider stack order: the pinned classe first, everything else in its natural order. */
+export function selectOrderedClasseTabs(classes: Classe[], principalClasseId: Id | null): Classe[] {
+  const principal = classes.find((c) => c.id === principalClasseId)
+  if (!principal) return classes
+  return [principal, ...classes.filter((c) => c.id !== principal.id)]
+}
+
+/** Free-text notes logged against a whole classe, most recent first. */
+export function selectClasseNotes(events: EventItem[], classeId: Id): EventItem[] {
+  return selectEventsForClasse(events, classeId).filter((e) => e.content.type === 'note')
+}
+
 export function selectEtablissementForClasse(
   etablissements: Etablissement[],
   classe: Classe,
