@@ -455,3 +455,75 @@ describe('useAppStore: établissements & class import', () => {
     expect(store.getState().classes).toBe(before)
   })
 })
+
+describe('useAppStore: tag category rename & delete', () => {
+  it('renames a category, trimmed', () => {
+    const store = createAppStore(createMemoryStorage())
+    const category = store.getState().tagCategories[0]
+    if (!category) throw new Error('expected a seed category')
+
+    store.getState().renameTagCategory(category.id, '  Attitude  ')
+
+    expect(store.getState().tagCategories.find((c) => c.id === category.id)?.name).toBe('Attitude')
+  })
+
+  it('ignores an empty name, an unchanged name, or an unknown category', () => {
+    const store = createAppStore(createMemoryStorage())
+    const category = store.getState().tagCategories[0]
+    if (!category) throw new Error('expected a seed category')
+    const before = store.getState().tagCategories
+
+    store.getState().renameTagCategory(category.id, '   ')
+    store.getState().renameTagCategory(category.id, category.name)
+    store.getState().renameTagCategory('does-not-exist', 'Peu importe')
+
+    expect(store.getState().tagCategories).toBe(before)
+  })
+
+  it('deleting a category takes its tags with it and spares the others', () => {
+    const store = createAppStore(createMemoryStorage())
+    const category = store.getState().tagCategories[0]
+    if (!category) throw new Error('expected a seed category')
+    const doomed = store.getState().tags.filter((t) => t.categoryId === category.id)
+    const survivors = store.getState().tags.filter((t) => t.categoryId !== category.id)
+    expect(doomed.length).toBeGreaterThan(0)
+
+    store.getState().deleteTagCategory(category.id)
+
+    expect(store.getState().tagCategories.find((c) => c.id === category.id)).toBeUndefined()
+    expect(store.getState().tags).toEqual(survivors)
+  })
+
+  it('leaves historical events referencing a deleted category’s tags untouched', () => {
+    const store = createAppStore(createMemoryStorage())
+    const category = store.getState().tagCategories[0]
+    if (!category) throw new Error('expected a seed category')
+    const doomedIds = store
+      .getState()
+      .tags.filter((t) => t.categoryId === category.id)
+      .map((t) => t.id)
+    const eventsBefore = store
+      .getState()
+      .events.filter((e) => e.content.type === 'tag' && doomedIds.includes(e.content.tagId))
+    expect(eventsBefore.length).toBeGreaterThan(0)
+
+    store.getState().deleteTagCategory(category.id)
+
+    // History records what happened; the UI renders a ghost chip for the tag.
+    const eventsAfter = store
+      .getState()
+      .events.filter((e) => e.content.type === 'tag' && doomedIds.includes(e.content.tagId))
+    expect(eventsAfter).toEqual(eventsBefore)
+  })
+
+  it('deleting an unknown category is a no-op', () => {
+    const store = createAppStore(createMemoryStorage())
+    const beforeCategories = store.getState().tagCategories
+    const beforeTags = store.getState().tags
+
+    store.getState().deleteTagCategory('does-not-exist')
+
+    expect(store.getState().tagCategories).toBe(beforeCategories)
+    expect(store.getState().tags).toBe(beforeTags)
+  })
+})
