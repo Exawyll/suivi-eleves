@@ -1,6 +1,6 @@
 .row {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 12px;
   padding: 12px 0;
   border-bottom: var(--divider-dashed);
@@ -12,30 +12,12 @@
   text-align: left;
   font: inherit;
   color: inherit;
-}
-
-button.row {
   cursor: pointer;
-}
-
-.classeIcon {
-  width: 36px;
-  height: 36px;
-  border-radius: var(--radius-sm);
-  background: var(--color-purple);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 15px;
-  flex-shrink: 0;
 }
 
 .main {
   flex: 1;
   min-width: 0;
-}
-
-.nameLine {
   display: flex;
   align-items: baseline;
   gap: 6px;
@@ -47,20 +29,9 @@ button.row {
   font-weight: 700;
 }
 
-.className {
+.classeName {
   font-size: 11px;
   color: var(--color-text-50);
-}
-
-.note {
-  font-size: 13px;
-  font-style: italic;
-  color: var(--color-text-70);
-  margin-top: 4px;
-}
-
-.chipRow {
-  margin-top: 5px;
 }
 
 .time {
