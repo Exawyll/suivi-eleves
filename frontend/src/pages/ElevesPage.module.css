@@ -1,16 +1,16 @@
 .page {
-  padding: 24px 20px 24px;
+  padding: 24px 20px;
 }
 
 .title {
   font-family: var(--font-heading);
   font-weight: var(--font-heading-weight);
-  font-size: 27px;
+  font-size: 30px;
   margin-bottom: 16px;
 }
 
 .search {
-  margin-bottom: 16px;
+  margin-bottom: 20px;
 }
 
 .studentRow {
@@ -18,9 +18,12 @@
   align-items: center;
   gap: 12px;
   padding: 11px 0;
-  border-bottom: 1px solid var(--color-divider);
+  border-bottom: var(--divider-dashed);
   width: 100%;
   background: none;
+  border-left: none;
+  border-right: none;
+  border-top: none;
   text-align: left;
   font: inherit;
   color: inherit;
@@ -28,10 +31,10 @@
 
 .studentName {
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .studentClass {
   font-size: 11px;
-  color: color-mix(in srgb, var(--color-text) 50%, transparent);
+  color: var(--color-text-55);
 }

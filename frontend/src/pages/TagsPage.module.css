@@ -16,11 +16,11 @@
 }
 
 .backButton {
-  width: 30px;
-  height: 30px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
-  border: 1px solid var(--color-divider);
-  background: transparent;
+  border: var(--border-ink);
+  background: var(--color-surface);
   flex-shrink: 0;
   display: flex;
   align-items: center;
@@ -30,17 +30,18 @@
 .title {
   font-family: var(--font-heading);
   font-weight: var(--font-heading-weight);
-  font-size: 24px;
+  font-size: 26px;
 }
 
 .addButton {
-  width: 32px;
-  height: 32px;
+  width: 34px;
+  height: 34px;
   border-radius: 50%;
-  border: 1px solid var(--color-accent);
-  background: transparent;
-  color: var(--color-accent-700);
+  border: 2px solid var(--color-coral);
+  background: var(--color-surface);
+  color: var(--color-coral);
   font-size: 18px;
+  font-weight: 800;
   line-height: 1;
 }
 
@@ -49,21 +50,25 @@
 }
 
 .categoryLabel {
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: color-mix(in srgb, var(--color-text) 55%, transparent);
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 16px;
+  color: var(--color-section);
   margin-bottom: 8px;
 }
 
+/* Tags are little cards, not flat rows. */
 .tagRow {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 10px 0;
-  border-bottom: 1px solid var(--color-divider);
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card-sm);
+  margin-bottom: 8px;
+  border: none;
   width: 100%;
-  background: none;
   text-align: left;
   font: inherit;
   color: inherit;
@@ -76,12 +81,12 @@
 .tagName {
   flex: 1;
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .variantLabel {
   font-size: 11px;
-  color: color-mix(in srgb, var(--color-text) 50%, transparent);
+  color: var(--color-text-50);
 }
 
 .addCategoryForm {
@@ -93,27 +98,30 @@
 .addCategoryInput {
   flex: 1;
   box-sizing: border-box;
-  padding: 8px 10px;
-  border: 1px solid var(--color-divider);
-  border-radius: 8px;
+  padding: 9px 12px;
+  border: var(--border-ink);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
   font-family: var(--font-body);
   font-size: 13px;
 }
 
 .addCategorySubmit {
-  padding: 8px 14px;
-  border-radius: 6px;
-  border: 1px solid var(--color-accent);
-  color: var(--color-accent-700);
-  background: transparent;
-  font-family: var(--font-heading);
-  font-weight: var(--font-heading-weight);
+  padding: 9px 16px;
+  border-radius: var(--radius-md);
+  border: 2px solid var(--color-confirm);
+  color: var(--color-text);
+  background: var(--color-confirm);
+  font-family: var(--font-body);
+  font-weight: 800;
   font-size: 13px;
 }
 
 .addCategoryLink {
-  font-size: 13px;
-  color: var(--color-accent-700);
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 16px;
+  color: var(--color-link);
   background: none;
   border: none;
   padding: 0;

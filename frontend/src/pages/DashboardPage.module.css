@@ -1,25 +1,30 @@
 .page {
-  padding: 24px 20px 24px;
+  padding: 24px 20px;
 }
 
 .greeting {
   font-family: var(--font-heading);
   font-weight: var(--font-heading-weight);
-  font-size: 27px;
+  font-size: 30px;
   line-height: 1.15;
   margin-bottom: 2px;
 }
 
 .date {
   font-size: 13px;
-  color: color-mix(in srgb, var(--color-text) 55%, transparent);
-  margin-bottom: 22px;
+  color: var(--color-text-55);
+  margin-bottom: 18px;
 }
 
+.search {
+  margin-bottom: 20px;
+}
+
+/* Handwritten section rule, in the mockup's blue. */
 .sectionLabel {
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: color-mix(in srgb, var(--color-text) 55%, transparent);
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 18px;
+  color: var(--color-blue);
   margin-bottom: 8px;
 }
