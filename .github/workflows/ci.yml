@@ -25,6 +25,26 @@ jobs:
 
   test:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: carnet
+          POSTGRES_DB: carnet
+          # No password at all: this container is reachable only from inside
+          # this job and is destroyed with it. Committing one would put a
+          # credential-shaped literal in the repository, which secret scanners
+          # rightly flag on every pull request.
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql+asyncpg://carnet@localhost:5432/carnet
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
