@@ -1,54 +1,101 @@
 .page {
-  padding: 24px 20px 24px;
+  padding: 24px 0;
 }
 
 .title {
   font-family: var(--font-heading);
   font-weight: var(--font-heading-weight);
-  font-size: 27px;
-  margin-bottom: 20px;
+  font-size: 24px;
+  text-align: center;
+  margin: 0 0 16px;
 }
 
-.group {
-  margin-bottom: 22px;
-}
-
-.groupLabel {
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: color-mix(in srgb, var(--color-text) 55%, transparent);
-  margin-bottom: 10px;
-}
-
-.classList {
+.binder {
   display: flex;
-  flex-direction: column;
-  gap: 10px;
+  max-width: 360px;
+  margin: 0 auto;
+  padding: 0 20px;
 }
 
-.classRow {
+.panel {
+  flex: 1;
+  min-width: 0;
+  padding: 0 16px 24px;
+  background: var(--color-neutral-100);
+  border-right: 3px solid transparent;
+  border-radius: 8px 0 0 8px;
+  box-shadow: var(--shadow-sm);
+}
+
+.panelHeader {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
-  padding: 14px 16px;
-  border: 1px solid var(--color-divider);
-  border-radius: 8px;
-  background: none;
-  width: 100%;
-  text-align: left;
-  font: inherit;
-  color: inherit;
+  gap: 10px;
+  padding-top: 16px;
+  margin-bottom: 16px;
 }
 
-.className {
+.panelHeading {
+  min-width: 0;
+}
+
+.classeName {
   font-family: var(--font-heading);
   font-weight: var(--font-heading-weight);
-  font-size: 16px;
+  font-size: 22px;
+  line-height: 1.1;
+  background: none;
+  border: none;
+  padding: 0;
+  color: inherit;
+  text-align: left;
+  cursor: text;
 }
 
-.classMeta {
+.classeMeta {
   font-size: 12px;
   color: color-mix(in srgb, var(--color-text) 55%, transparent);
   margin-top: 2px;
+}
+
+.eventButton {
+  flex-shrink: 0;
+  padding: 7px 12px;
+  border-radius: 6px;
+  border: 1px solid currentcolor;
+  background: transparent;
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 12px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.studentRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--color-divider);
+  width: 100%;
+  background: none;
+  border-left: none;
+  border-right: none;
+  border-top: none;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.studentName {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.noTag {
+  font-size: 11px;
+  color: color-mix(in srgb, var(--color-text) 40%, transparent);
 }
