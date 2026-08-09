@@ -11,6 +11,19 @@ export function useBottomSheet(isOpen: boolean, onClose: () => void) {
   const containerRef = useRef<HTMLDivElement>(null)
   const triggerElementRef = useRef<Element | null>(null)
 
+  /**
+   * Held in a ref so the effect below can depend on `isOpen` alone.
+   *
+   * Depending on `onClose` directly breaks any sheet whose parent passes an
+   * inline closure: every re-render gives a new identity, the effect tears down
+   * and re-runs, and its cleanup hands focus back to the trigger *outside* the
+   * sheet. Typing into a field would then lose focus after one character.
+   */
+  const onCloseRef = useRef(onClose)
+  useEffect(() => {
+    onCloseRef.current = onClose
+  }, [onClose])
+
   useEffect(() => {
     if (!isOpen) return
 
@@ -21,7 +34,7 @@ export function useBottomSheet(isOpen: boolean, onClose: () => void) {
 
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === 'Escape') {
-        onClose()
+        onCloseRef.current()
         return
       }
       if (event.key !== 'Tab' || !container) return
@@ -48,7 +61,7 @@ export function useBottomSheet(isOpen: boolean, onClose: () => void) {
         triggerElementRef.current.focus()
       }
     }
-  }, [isOpen, onClose])
+  }, [isOpen])
 
   return { containerRef }
 }
