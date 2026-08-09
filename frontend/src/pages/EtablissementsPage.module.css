@@ -1,0 +1,107 @@
+.page {
+  padding: 24px 20px 28px;
+}
+
+.card {
+  padding: 14px 16px;
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+  margin-bottom: 16px;
+}
+
+.etablissementName {
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 19px;
+  margin: 0 0 10px;
+}
+
+.classeRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 9px 0;
+  border-bottom: var(--divider-dashed);
+}
+
+.classeName {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.classeMeta {
+  font-size: 11px;
+  color: var(--color-text-55);
+  margin-top: 1px;
+}
+
+.noClasses {
+  font-size: 12px;
+  color: var(--color-text-50);
+  padding: 8px 0;
+}
+
+.addClasseLink {
+  margin-top: 10px;
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 15px;
+  color: var(--color-link);
+  background: none;
+  border: none;
+  padding: 0;
+}
+
+.addForm {
+  display: flex;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.addInput {
+  flex: 1;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 9px 12px;
+  border: var(--border-ink);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  font-family: var(--font-body);
+  font-size: 13px;
+}
+
+.addSubmit {
+  padding: 9px 16px;
+  border-radius: var(--radius-md);
+  border: 2px solid var(--color-confirm);
+  color: var(--color-text);
+  background: var(--color-confirm);
+  font-family: var(--font-body);
+  font-weight: 800;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.addCancel {
+  padding: 9px 14px;
+  flex-shrink: 0;
+  border-radius: var(--radius-md);
+  border: var(--border-sand);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.addLink {
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 16px;
+  color: var(--color-link);
+  background: none;
+  border: none;
+  padding: 0;
+  margin-top: 4px;
+}

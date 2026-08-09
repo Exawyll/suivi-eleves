@@ -52,6 +52,22 @@ export function selectEventsGroupedByDateLabel(events: EventItem[]): DateGroup[]
   return [...groups.entries()].map(([label, items]) => ({ label, items }))
 }
 
+export interface EtablissementGroup {
+  etablissement: Etablissement
+  classes: Classe[]
+}
+
+/** Établissements with the classes they hold, in declaration order. */
+export function selectClassesByEtablissement(
+  etablissements: Etablissement[],
+  classes: Classe[],
+): EtablissementGroup[] {
+  return etablissements.map((etablissement) => ({
+    etablissement,
+    classes: classes.filter((c) => c.etablissementId === etablissement.id),
+  }))
+}
+
 export function selectClasseForEleve(classes: Classe[], eleve: Eleve): Classe | undefined {
   return classes.find((c) => c.id === eleve.classeId)
 }

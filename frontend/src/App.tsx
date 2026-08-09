@@ -8,6 +8,7 @@ import { TagEditorSheet } from '@/components/tagEditor/TagEditorSheet'
 import { DashboardPage } from '@/pages/DashboardPage'
 import { ClassesPage } from '@/pages/ClassesPage'
 import { DossierPage } from '@/pages/DossierPage'
+import { EtablissementsPage } from '@/pages/EtablissementsPage'
 import { SettingsPage } from '@/pages/SettingsPage'
 import { TagsPage } from '@/pages/TagsPage'
 import styles from './App.module.css'
@@ -40,6 +41,7 @@ export default function App() {
           <Route path="/eleves/:eleveId" element={<DossierPage />} />
           <Route path="/reglages" element={<SettingsPage />} />
           <Route path="/reglages/tags" element={<TagsPage />} />
+          <Route path="/reglages/etablissements" element={<EtablissementsPage />} />
           {/* Installed shortcuts and bookmarks can still point at routes this
               version no longer serves. Old per-classe URLs land back on the
               binder, which is where they meant to go; anything else falls
