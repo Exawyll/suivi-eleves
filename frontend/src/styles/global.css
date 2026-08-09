@@ -14,7 +14,10 @@ body,
 
 body {
   margin: 0;
-  background: var(--color-bg);
+  background-color: var(--color-bg);
+  /* Ruled paper: one hairline every --rule-height, as in the mockup. */
+  background-image: linear-gradient(var(--color-rule) 1px, transparent 1px);
+  background-size: 100% var(--rule-height);
   color: var(--color-text);
   font-family: var(--font-body);
   font-size: 15px;
@@ -29,8 +32,7 @@ h5,
 h6 {
   font-family: var(--font-heading);
   font-weight: var(--font-heading-weight);
-  line-height: 1.12;
-  letter-spacing: -0.015em;
+  line-height: 1.15;
   margin: 0;
 }
 
@@ -51,27 +53,27 @@ button {
 }
 
 a {
-  color: var(--color-accent-700);
+  color: var(--color-link);
   text-decoration: none;
 }
 a:hover {
-  color: var(--color-accent-800);
+  color: var(--color-blue-dark);
 }
 
 :focus {
   outline: none;
 }
 :focus-visible {
-  outline: 2px solid var(--color-accent-700);
+  outline: 2px solid var(--color-blue);
   outline-offset: 2px;
 }
 
 ::selection {
-  background: color-mix(in srgb, var(--color-accent) 30%, transparent);
+  background: color-mix(in srgb, var(--color-yellow) 55%, transparent);
 }
 
 .text-muted {
-  color: color-mix(in srgb, var(--color-text) 55%, transparent);
+  color: var(--color-text-55);
 }
 
 /* Safe-area padding for the bottom tab bar on notched/gesture-bar devices. */

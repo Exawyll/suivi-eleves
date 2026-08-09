@@ -1,5 +1,5 @@
 .page {
-  padding: 24px 20px 24px;
+  padding: 24px 20px;
 }
 
 .headerRow {
@@ -11,13 +11,13 @@
 
 .eventButton {
   flex-shrink: 0;
-  padding: 7px 12px;
-  border-radius: 6px;
-  border: 1px solid var(--color-accent);
-  color: var(--color-accent-700);
-  background: transparent;
-  font-family: var(--font-heading);
-  font-weight: var(--font-heading-weight);
+  padding: 8px 14px;
+  border-radius: var(--radius-md);
+  border: 2px solid var(--color-blue);
+  color: var(--color-blue);
+  background: var(--color-surface);
+  font-family: var(--font-body);
+  font-weight: 800;
   font-size: 12px;
   white-space: nowrap;
 }
@@ -27,9 +27,12 @@
   align-items: center;
   gap: 12px;
   padding: 11px 0;
-  border-bottom: 1px solid var(--color-divider);
+  border-bottom: var(--divider-dashed);
   width: 100%;
   background: none;
+  border-left: none;
+  border-right: none;
+  border-top: none;
   text-align: left;
   font: inherit;
   color: inherit;
@@ -38,12 +41,12 @@
 .studentName {
   flex: 1;
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .noTag {
   font-size: 11px;
-  color: color-mix(in srgb, var(--color-text) 40%, transparent);
+  color: var(--color-text-35);
 }
 
 .classEventsSection {
@@ -51,26 +54,26 @@
 }
 
 .sectionLabel {
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: color-mix(in srgb, var(--color-text) 55%, transparent);
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 16px;
+  color: var(--color-section);
   margin-bottom: 8px;
 }
 
 .classEvent {
   padding: 10px 0;
-  border-bottom: 1px solid var(--color-divider);
+  border-bottom: var(--divider-dashed);
 }
 
 .classEventText {
   font-size: 13px;
   font-style: italic;
-  color: color-mix(in srgb, var(--color-text) 80%, transparent);
+  color: var(--color-text-70);
 }
 
 .classEventMeta {
   font-size: 11px;
-  color: color-mix(in srgb, var(--color-text) 50%, transparent);
+  color: var(--color-text-50);
   margin-top: 3px;
 }

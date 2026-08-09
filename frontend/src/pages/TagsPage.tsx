@@ -4,14 +4,8 @@ import { useAppStore } from '@/store/useAppStore'
 import { useUiStore } from '@/store/useUiStore'
 import { selectTagsByCategory } from '@/store/selectors'
 import { ChevronLeftIcon, ChevronRightIcon } from '@/components/icons/NavIcons'
-import type { TagVariant } from '@/types/domain'
+import { VARIANT_LABEL } from '@/utils/tagVariants'
 import styles from './TagsPage.module.css'
-
-const VARIANT_LABEL: Record<TagVariant, string> = {
-  accent: 'Plein',
-  outline: 'Contour',
-  neutral: 'Neutre',
-}
 
 export function TagsPage() {
   const navigate = useNavigate()

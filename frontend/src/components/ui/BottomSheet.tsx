@@ -3,15 +3,32 @@ import { useBottomSheet } from '@/hooks/useBottomSheet'
 import { CloseIcon } from '@/components/icons/NavIcons'
 import styles from './BottomSheet.module.css'
 
+/** Colour of the sheet's top edge — one hue per sheet, as in the mockup. */
+type SheetAccent = 'coral' | 'purple' | 'blue'
+
 interface BottomSheetProps {
   isOpen: boolean
   onClose: () => void
   title: string
   children: ReactNode
   footer?: ReactNode
+  accent?: SheetAccent
 }
 
-export function BottomSheet({ isOpen, onClose, title, children, footer }: BottomSheetProps) {
+const ACCENT_CLASS: Record<SheetAccent, string> = {
+  coral: styles.accentCoral ?? '',
+  purple: styles.accentPurple ?? '',
+  blue: styles.accentBlue ?? '',
+}
+
+export function BottomSheet({
+  isOpen,
+  onClose,
+  title,
+  children,
+  footer,
+  accent = 'coral',
+}: BottomSheetProps) {
   const { containerRef } = useBottomSheet(isOpen, onClose)
 
   if (!isOpen) return null
@@ -26,7 +43,7 @@ export function BottomSheet({ isOpen, onClose, title, children, footer }: Bottom
           native <dialog>, which would fight the backdrop/animation styling here. */}
       <div
         ref={containerRef}
-        className={styles.sheet}
+        className={`${styles.sheet} ${ACCENT_CLASS[accent]}`}
         // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role
         role="dialog"
         aria-modal="true"

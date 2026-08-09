@@ -26,6 +26,7 @@ export function TagEditorSheet() {
       isOpen={isOpen}
       onClose={closeTagEditor}
       title={editingTagId ? 'Modifier le tag' : 'Nouveau tag'}
+      accent="purple"
     >
       <div className={styles.fieldRow}>
         <input

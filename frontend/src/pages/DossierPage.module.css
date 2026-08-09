@@ -7,44 +7,53 @@
 }
 
 .sectionLabel {
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: color-mix(in srgb, var(--color-text) 55%, transparent);
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 16px;
+  color: var(--color-section);
   margin-bottom: 10px;
 }
 
+/* Highlighter wash with a yellow marker edge. */
 .featuredNote {
-  padding: 2px 0 2px 14px;
-  border-left: 2px solid var(--color-accent);
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  background: var(--color-highlight);
+  border-left: 4px solid var(--color-yellow);
   margin-bottom: 14px;
 }
 
 .featuredNoteText {
   font-family: var(--font-heading);
-  font-style: italic;
-  font-size: 16px;
-  line-height: 1.42;
+  font-weight: var(--font-heading-weight);
+  font-size: 17px;
+  line-height: 1.4;
 }
 
 .featuredNoteMeta {
   font-size: 11px;
-  color: color-mix(in srgb, var(--color-text) 50%, transparent);
+  color: var(--color-text-50);
   margin-top: 6px;
 }
 
 .divider {
-  height: 1px;
-  background: var(--color-divider);
+  height: 2px;
+  background: repeating-linear-gradient(
+    90deg,
+    var(--color-sand) 0,
+    var(--color-sand) 6px,
+    transparent 6px,
+    transparent 12px
+  );
   margin: 16px 0;
 }
 
 .historyLabel {
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: color-mix(in srgb, var(--color-text) 55%, transparent);
-  margin-bottom: 6px;
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 16px;
+  color: var(--color-blue);
+  margin: 14px 0 6px;
 }
 
 .dateGroup {
@@ -52,10 +61,10 @@
 }
 
 .dateGroupLabel {
-  font-family: var(--font-heading);
-  font-weight: var(--font-heading-weight);
-  font-size: 13px;
-  color: color-mix(in srgb, var(--color-text) 70%, transparent);
+  font-family: var(--font-body);
+  font-weight: 800;
+  font-size: 12px;
+  color: var(--color-text-60);
   padding: 8px 0 2px;
 }
 
@@ -64,19 +73,19 @@
   align-items: center;
   gap: 10px;
   padding: 9px 0;
-  border-bottom: 1px solid var(--color-divider);
+  border-bottom: var(--divider-dashed);
 }
 
 .historyNote {
   font-size: 13px;
   font-style: italic;
-  color: color-mix(in srgb, var(--color-text) 78%, transparent);
+  color: var(--color-text-70);
   flex: 1;
 }
 
 .historyTime {
   margin-left: auto;
   font-size: 11px;
-  color: color-mix(in srgb, var(--color-text) 45%, transparent);
+  color: var(--color-text-45);
   white-space: nowrap;
 }

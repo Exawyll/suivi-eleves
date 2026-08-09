@@ -3,11 +3,13 @@
   align-items: center;
   gap: 5px;
   font-size: 12px;
+  font-weight: 700;
   padding: 3px 10px;
-  border-radius: 999px;
-  border: 1px solid transparent;
+  border-radius: var(--radius-pill);
+  border: 2px solid transparent;
   font-family: var(--font-body);
   background: none;
+  white-space: nowrap;
 }
 
 button.chip {
@@ -15,26 +17,39 @@ button.chip {
 }
 
 .accent {
-  background: var(--color-accent-100);
-  color: var(--color-accent-800);
-}
-
-.neutral {
-  background: var(--color-neutral-100);
-  color: var(--color-neutral-800);
-}
-
-.outline {
-  border-color: var(--color-accent);
-  color: var(--color-accent-700);
-}
-
-.selected {
-  background: var(--color-accent-700);
-  border-color: var(--color-accent-700);
+  background: var(--color-blue);
   color: #fff;
 }
 
+.neutral {
+  background: var(--color-green);
+  color: var(--color-text);
+}
+
+.outline {
+  border-color: var(--color-coral);
+  color: var(--color-coral);
+  background: var(--color-surface);
+}
+
+/* Quick-entry stamp: larger tap target, ink outline when picked. */
+.selected {
+  padding: 8px 14px;
+  font-size: 13px;
+  background: var(--color-blue);
+  border-color: var(--color-text);
+  color: #fff;
+}
+
+.unselected {
+  padding: 8px 14px;
+  font-size: 13px;
+  background: var(--color-surface);
+  border-color: var(--color-sand);
+  color: var(--color-text);
+}
+
 .ghost {
-  color: color-mix(in srgb, var(--color-text) 40%, transparent);
+  color: var(--color-text-35);
+  border-color: var(--color-sand);
 }

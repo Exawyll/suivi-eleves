@@ -1,11 +1,11 @@
 .page {
-  padding: 24px 20px 24px;
+  padding: 24px 20px;
 }
 
 .title {
   font-family: var(--font-heading);
   font-weight: var(--font-heading-weight);
-  font-size: 27px;
+  font-size: 30px;
   margin-bottom: 20px;
 }
 
@@ -14,17 +14,17 @@
 }
 
 .groupLabel {
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: color-mix(in srgb, var(--color-text) 55%, transparent);
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 16px;
+  color: var(--color-section);
   margin-bottom: 10px;
 }
 
 .classList {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
 }
 
 .classRow {
@@ -32,9 +32,10 @@
   align-items: center;
   justify-content: space-between;
   padding: 14px 16px;
-  border: 1px solid var(--color-divider);
-  border-radius: 8px;
-  background: none;
+  border: none;
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
   width: 100%;
   text-align: left;
   font: inherit;
@@ -44,11 +45,11 @@
 .className {
   font-family: var(--font-heading);
   font-weight: var(--font-heading-weight);
-  font-size: 16px;
+  font-size: 19px;
 }
 
 .classMeta {
   font-size: 12px;
-  color: color-mix(in srgb, var(--color-text) 55%, transparent);
+  color: var(--color-text-55);
   margin-top: 2px;
 }

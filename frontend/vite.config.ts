@@ -16,8 +16,8 @@ export default defineConfig({
         short_name: 'Carnet',
         description:
           "Application non officielle et privée de suivi d'élèves, entièrement hors-ligne.",
-        theme_color: '#7d5411',
-        background_color: '#f3f2f2',
+        theme_color: '#ff595e',
+        background_color: '#fbf6ee',
         display: 'standalone',
         lang: 'fr',
         icons: [

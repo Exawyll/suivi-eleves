@@ -45,12 +45,14 @@ export function QuickEntrySheet() {
       }
     >
       <TargetSelector />
+      {/* Note first, then the tag stamps: the v2 design puts the free-text note
+          in plain sight ("la note libre est visible d'emblée"). */}
+      <NoteTextarea value={noteText} onChange={setQuickEntryNote} />
       <TagCategoryPicker
         groups={tagGroups}
         selectedTagIds={selectedTagIds}
         onToggle={toggleQuickEntryTag}
       />
-      <NoteTextarea value={noteText} onChange={setQuickEntryNote} />
     </BottomSheet>
   )
 }

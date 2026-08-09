@@ -5,12 +5,13 @@
 }
 
 .emojiInput {
-  width: 52px;
+  width: 54px;
   box-sizing: border-box;
   text-align: center;
   padding: 8px;
-  border: 1px solid var(--color-divider);
-  border-radius: 8px;
+  border: var(--border-ink);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
   font-size: 18px;
 }
 
@@ -18,28 +19,30 @@
   flex: 1;
   box-sizing: border-box;
   padding: 8px 12px;
-  border: 1px solid var(--color-divider);
-  border-radius: 8px;
+  border: var(--border-ink);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
   font-family: var(--font-body);
   font-size: 14px;
 }
 
 .label {
   font-size: 12px;
-  color: color-mix(in srgb, var(--color-text) 60%, transparent);
+  font-weight: 800;
+  color: var(--color-text-60);
   margin-bottom: 6px;
 }
 
 .select {
   width: 100%;
   box-sizing: border-box;
-  padding: 8px 10px;
-  border: 1px solid var(--color-divider);
-  border-radius: 8px;
+  padding: 9px 10px;
+  border: var(--border-ink);
+  border-radius: var(--radius-md);
   font-family: var(--font-body);
   font-size: 14px;
   margin-bottom: 14px;
-  background: transparent;
+  background: var(--color-surface);
   color: inherit;
 }
 
@@ -49,25 +52,25 @@
 }
 
 .deleteButton {
-  padding: 10px 16px;
-  border-radius: 8px;
-  border: 1px solid var(--color-divider);
-  color: color-mix(in srgb, var(--color-text) 60%, transparent);
-  background: transparent;
-  font-family: var(--font-heading);
-  font-weight: var(--font-heading-weight);
+  padding: 11px 16px;
+  border-radius: var(--radius-lg);
+  border: var(--border-sand);
+  color: var(--color-text-60);
+  background: var(--color-surface);
+  font-family: var(--font-body);
+  font-weight: 800;
   font-size: 13px;
 }
 
 .saveButton {
   flex: 1;
-  padding: 10px 16px;
-  border-radius: 8px;
-  border: 1px solid var(--color-accent);
-  color: var(--color-accent-700);
-  background: transparent;
-  font-family: var(--font-heading);
-  font-weight: var(--font-heading-weight);
+  padding: 11px 16px;
+  border-radius: var(--radius-lg);
+  border: var(--border-ink);
+  color: var(--color-text);
+  background: var(--color-primary);
+  font-family: var(--font-body);
+  font-weight: 800;
   font-size: 14px;
 }
 

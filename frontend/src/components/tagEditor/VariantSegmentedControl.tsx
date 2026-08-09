@@ -1,4 +1,5 @@
 import type { TagVariant } from '@/types/domain'
+import { VARIANT_LABEL } from '@/utils/tagVariants'
 import styles from './VariantSegmentedControl.module.css'
 
 interface VariantSegmentedControlProps {
@@ -6,26 +7,34 @@ interface VariantSegmentedControlProps {
   onChange: (variant: TagVariant) => void
 }
 
-const OPTIONS: { value: TagVariant; label: string }[] = [
-  { value: 'accent', label: 'Plein' },
-  { value: 'outline', label: 'Contour' },
-  { value: 'neutral', label: 'Neutre' },
+/**
+ * The mockup names each style after its colour and previews that colour on the
+ * pill itself, which reads far better than abstract labels once a teacher has a
+ * dozen tags.
+ */
+const OPTIONS: { value: TagVariant; label: string; activeClass: string }[] = [
+  { value: 'accent', label: VARIANT_LABEL.accent, activeClass: styles.activeAccent ?? '' },
+  { value: 'outline', label: VARIANT_LABEL.outline, activeClass: styles.activeOutline ?? '' },
+  { value: 'neutral', label: VARIANT_LABEL.neutral, activeClass: styles.activeNeutral ?? '' },
 ]
 
 export function VariantSegmentedControl({ value, onChange }: VariantSegmentedControlProps) {
   return (
     <div className={styles.seg}>
-      {OPTIONS.map((option) => (
-        <button
-          key={option.value}
-          type="button"
-          aria-pressed={value === option.value}
-          className={`${styles.opt} ${value === option.value ? styles.active : ''}`}
-          onClick={() => onChange(option.value)}
-        >
-          {option.label}
-        </button>
-      ))}
+      {OPTIONS.map((option) => {
+        const isActive = value === option.value
+        return (
+          <button
+            key={option.value}
+            type="button"
+            aria-pressed={isActive}
+            className={`${styles.opt} ${isActive ? option.activeClass : ''}`}
+            onClick={() => onChange(option.value)}
+          >
+            {option.label}
+          </button>
+        )
+      })}
     </div>
   )
 }
