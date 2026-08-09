@@ -35,13 +35,30 @@ export interface AppState {
   tags: Tag[]
   events: EventItem[]
   hasSeeded: boolean
+  /** Divider currently open on the Classes screen. May point at a deleted classe — resolve with `selectActiveClasse`. */
+  activeClasseId: Id | null
+  /** Classe pinned to the top of the divider stack. `null` when the teacher hasn't picked one. */
+  principalClasseId: Id | null
 
   logEvent: (input: LogEventInput) => void
   createTagCategory: (name: string) => Id
   createTag: (input: Omit<Tag, 'id'>) => Id
   updateTag: (id: Id, patch: Partial<Omit<Tag, 'id'>>) => void
   deleteTag: (id: Id) => void
+  setActiveClasse: (id: Id) => void
+  togglePrincipalClasse: (id: Id) => void
+  renameClasse: (id: Id, name: string) => void
 }
+
+type AppActions =
+  | 'logEvent'
+  | 'createTagCategory'
+  | 'createTag'
+  | 'updateTag'
+  | 'deleteTag'
+  | 'setActiveClasse'
+  | 'togglePrincipalClasse'
+  | 'renameClasse'
 
 /**
  * Seeded on first run only: this is the creator's initial state. Zustand's
@@ -49,10 +66,7 @@ export interface AppState {
  * saved to storage (even empty arrays), so a returning user's data is never
  * clobbered — only a truly empty storage leaves this seed data in place.
  */
-function initialDomainState(): Omit<
-  AppState,
-  'logEvent' | 'createTagCategory' | 'createTag' | 'updateTag' | 'deleteTag'
-> {
+function initialDomainState(): Omit<AppState, AppActions> {
   return {
     etablissements: SEED_ETABLISSEMENTS,
     classes: SEED_CLASSES,
@@ -61,6 +75,8 @@ function initialDomainState(): Omit<
     tags: SEED_TAGS,
     events: SEED_EVENTS,
     hasSeeded: true,
+    activeClasseId: SEED_CLASSES[0]?.id ?? null,
+    principalClasseId: null,
   }
 }
 
@@ -139,6 +155,29 @@ export function createAppStore(storage: StateStorage = localStorage) {
         deleteTag: (id) => {
           set((state) => ({ tags: state.tags.filter((t) => t.id !== id) }))
         },
+
+        setActiveClasse: (id) => {
+          set((state) => (state.classes.some((c) => c.id === id) ? { activeClasseId: id } : {}))
+        },
+
+        /** Pinning the classe that's already pinned unpins it, as in the mockup's star toggle. */
+        togglePrincipalClasse: (id) => {
+          set((state) => {
+            if (!state.classes.some((c) => c.id === id)) return {}
+            return { principalClasseId: state.principalClasseId === id ? null : id }
+          })
+        },
+
+        renameClasse: (id, name) => {
+          const trimmed = name.trim()
+          if (trimmed === '') return
+          set((state) => {
+            if (!state.classes.some((c) => c.id === id)) return {}
+            return {
+              classes: state.classes.map((c) => (c.id === id ? { ...c, name: trimmed } : c)),
+            }
+          })
+        },
       }),
       {
         name: 'suivi-eleves:v1',
@@ -152,6 +191,8 @@ export function createAppStore(storage: StateStorage = localStorage) {
           tags: state.tags,
           events: state.events,
           hasSeeded: state.hasSeeded,
+          activeClasseId: state.activeClasseId,
+          principalClasseId: state.principalClasseId,
         }),
       },
     ),
