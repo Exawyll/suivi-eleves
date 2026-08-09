@@ -5,7 +5,12 @@ interface TagChipProps {
   emoji: string
   name: string
   variant: TagVariant
-  /** Quick-Entry-only visual state: solid filled regardless of the tag's own variant. */
+  /**
+   * `display` shows the tag in its own colour (history, roster, feed).
+   * `stamp` is the Quick Entry rubber stamp: a bigger tap target that reads as
+   * picked or not picked rather than by the tag's own colour.
+   */
+  mode?: 'display' | 'stamp'
   selected?: boolean
   onClick?: () => void
 }
@@ -16,13 +21,25 @@ const VARIANT_CLASS: Record<TagVariant, string> = {
   neutral: styles.neutral ?? '',
 }
 
-export function TagChip({ emoji, name, variant, selected = false, onClick }: TagChipProps) {
-  const className = `${styles.chip} ${selected ? styles.selected : VARIANT_CLASS[variant]}`
+export function TagChip({
+  emoji,
+  name,
+  variant,
+  mode = 'display',
+  selected = false,
+  onClick,
+}: TagChipProps) {
+  const stateClass =
+    mode === 'stamp'
+      ? ((selected ? styles.selected : styles.unselected) ?? '')
+      : VARIANT_CLASS[variant]
+  const className = `${styles.chip} ${stateClass}`
+
   const content = (
     <>
       <span aria-hidden="true">{emoji}</span>
       {name}
-      {selected && <span aria-hidden="true"> ✓</span>}
+      {mode === 'stamp' && selected && <span aria-hidden="true"> ✓</span>}
     </>
   )
 

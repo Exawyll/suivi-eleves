@@ -10,7 +10,7 @@
 .backdrop {
   position: absolute;
   inset: 0;
-  background: color-mix(in srgb, var(--color-neutral-900) 45%, transparent);
+  background: var(--color-scrim);
   border: none;
   padding: 0;
 }
@@ -18,12 +18,26 @@
 .sheet {
   position: relative;
   background: var(--color-bg);
-  border-radius: 20px 20px 0 0;
-  box-shadow: var(--shadow-lg);
+  border-radius: var(--radius-sheet) var(--radius-sheet) 0 0;
+  /* Coloured top edge, one hue per sheet — see the accent modifiers below. */
+  border-top: 3px solid var(--color-coral);
+  box-shadow: var(--shadow-sheet);
   max-height: 86svh;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+}
+
+.accentCoral {
+  border-top-color: var(--color-coral);
+}
+
+.accentPurple {
+  border-top-color: var(--color-purple);
+}
+
+.accentBlue {
+  border-top-color: var(--color-blue);
 }
 
 .handleRow {
@@ -33,10 +47,10 @@
 }
 
 .handle {
-  width: 36px;
-  height: 4px;
-  border-radius: 2px;
-  background: var(--color-divider);
+  width: 40px;
+  height: 5px;
+  border-radius: 3px;
+  background: var(--color-sand);
 }
 
 .header {
@@ -44,21 +58,21 @@
   align-items: center;
   justify-content: space-between;
   padding: 4px 18px 12px;
-  border-bottom: 1px solid var(--color-divider);
+  border-bottom: var(--divider-dashed);
 }
 
 .title {
   font-family: var(--font-heading);
   font-weight: var(--font-heading-weight);
-  font-size: 18px;
+  font-size: 22px;
 }
 
 .closeButton {
-  width: 30px;
-  height: 30px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
-  border: 1px solid var(--color-divider);
-  background: transparent;
+  border: var(--border-ink);
+  background: var(--color-surface);
   display: flex;
   align-items: center;
   justify-content: center;

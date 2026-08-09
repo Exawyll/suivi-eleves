@@ -2,13 +2,13 @@
   position: absolute;
   right: 16px;
   bottom: 92px;
-  width: 54px;
-  height: 54px;
+  width: 56px;
+  height: 56px;
   border-radius: 50%;
-  background: var(--color-accent-700);
+  background: var(--color-coral);
   color: #fff;
-  border: none;
-  box-shadow: var(--shadow-md);
+  border: var(--border-ink);
+  box-shadow: var(--shadow-fab);
   display: flex;
   align-items: center;
   justify-content: center;
