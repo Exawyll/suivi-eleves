@@ -88,8 +88,10 @@ export function ClassesPage() {
                   {activeClasse.name}
                 </button>
               )}
+              {/* An imported classe has no niveau, so the separator has to be
+                  conditional or the line opens with a stray "·". */}
               <div className={styles.classeMeta}>
-                {activeClasse.niveau} · {etablissement?.name ?? ''}
+                {[activeClasse.niveau, etablissement?.name].filter(Boolean).join(' · ')}
               </div>
             </div>
             <button
