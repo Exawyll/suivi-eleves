@@ -2,7 +2,10 @@ name: DeepSeek Review
 
 on:
   pull_request:
-    branches: [main]
+    # Same reason as ci.yml: the v2 accounts work stacks on an integration
+    # branch, and a review that only runs on pull requests to main would skip
+    # every one of them.
+    branches: [main, feature/carnet-v2-comptes]
 
 permissions:
   contents: read
@@ -44,6 +47,12 @@ jobs:
           payload=$(jq -n --rawfile diff pr.diff '{
             model: "deepseek-v4-pro",
             temperature: 0.2,
+            # No max_tokens on purpose. It made the call return in seconds
+            # with an empty content field, at 900 and again at 4000 — this
+            # model spends the budget on reasoning first. The deadline below
+            # is what bounds the request instead.
+            # Mind the quoting in this comment: it sits inside the
+            # single-quoted jq program, where one apostrophe closes it.
             messages: [
               {role: "system", content: "Tu es un reviewer de code senior. Analyse ce diff de pull request et signale uniquement les bugs réels, failles de sécurité et régressions probables — pas de style ni de formatage. Réponds en français, en liste à puces, une ligne par problème avec le fichier concerné si identifiable. Si tu ne vois rien à signaler, dis-le explicitement en une phrase."},
               {role: "user", content: $diff}
@@ -55,7 +64,13 @@ jobs:
           # below — written precisely to keep this review advisory — would
           # never run. That is how a 120 s timeout on a large diff turned into
           # a red check on a pull request whose code was fine.
-          http_code=$(curl -sS -o response.json -w "%{http_code}" --max-time 300 \
+          #
+          # The deadline has moved twice since: a 60 KB diff genuinely takes
+          # minutes, and at 300 s the review still expired — leaving a stale
+          # comment standing while the job reported success, which is worse
+          # than a red check. 900 s plus the max_tokens ceiling above is what
+          # makes it actually finish.
+          http_code=$(curl -sS -o response.json -w "%{http_code}" --max-time 900 \
             https://api.deepseek.com/chat/completions \
             -H "Authorization: Bearer $DEEPSEEK_API_KEY" \
             -H "Content-Type: application/json" \
@@ -67,7 +82,21 @@ jobs:
             exit 0
           fi
 
-          { echo "## 🔎 Revue automatique — DeepSeek V4 Pro"; echo; jq -r '.choices[0].message.content' response.json; } > comment.md
+          review=$(jq -r '.choices[0].message.content // empty' response.json)
+
+          # An empty answer must not overwrite the standing review. Posting the
+          # heading with nothing under it makes the pull request look reviewed
+          # when nothing looked at it — the same trap as a stale comment, and
+          # exactly how a 200 response with an empty content field behaved.
+          if [ -z "$review" ]; then
+            echo "DeepSeek returned an empty review — leaving the previous comment in place."
+            # Printed so the next occurrence is diagnosable from the log alone:
+            # an empty content field with a 200 says nothing by itself.
+            jq -c '{choices: (.choices | map(del(.message.content))), usage}' response.json || true
+            exit 0
+          fi
+
+          { echo "## 🔎 Revue automatique — DeepSeek V4 Pro"; echo; echo "$review"; } > comment.md
 
           gh pr comment "$PR_NUMBER" --edit-last --body-file comment.md \
             || gh pr comment "$PR_NUMBER" --body-file comment.md

@@ -61,6 +61,56 @@ le déploiement passe à plusieurs instances, il faudra un stockage partagé
 (Redis ou une table). C'est un ralentisseur contre le devinage en ligne, pas une
 défense contre une attaque distribuée.
 
+## Synchronisation
+
+Le serveur range des **enveloppes opaques** `(user_id, entity_type, entity_id) → ciphertext` et
+n'arbitre que sur des métadonnées en clair : révision, horodatage client, tombstone. Il ne déchiffre
+jamais rien.
+
+- **Granularité par enregistrement**, pas par instantané : un instantané rendrait la fusion
+  multi-appareil impossible et re-téléverserait tout le carnet à chaque note.
+- **Le curseur n'avance que par un pull.** `POST /sync/changes` ne renvoie délibérément aucun
+  curseur : rendre la révision de tête après un push serait un piège à perte de données — un
+  appareil resté à la révision 5 pendant qu'un autre a poussé jusqu'à 20 se verrait remettre 21, et
+  tous ses pulls suivants démarreraient au-dessus des quinze enregistrements qu'il n'a jamais vus.
+- **Curseur** = dernière `revision` vue. La séquence est globale et strictement croissante, donc
+  utilisable telle quelle. Elle peut comporter des trous : une tentative d'écriture perdue en
+  arbitrage consomme quand même un numéro.
+- **Conflits** : le client envoie la `baseRevision` qu'il connaît. Si elle correspond, il écrase.
+  Sinon, arbitrage *last-write-wins* sur `clientUpdatedAt`, et l'enveloppe qui reste en place repart
+  dans `conflicts[]` pour que le client l'applique. À horodatage égal, le serveur garde la sienne :
+  le résultat ne dépend pas de l'ordre d'arrivée.
+- **Suppressions** par tombstone (`deleted = true`, `ciphertext = NULL`), jamais de DELETE physique —
+  sinon un appareil hors-ligne ressusciterait l'enregistrement.
+- **Garde-fous** : 64 Kio par enveloppe, 500 enveloppes par push, 500 par page de pull, et
+  `entity_type` restreint aux sept types du domaine.
+
+### L'isolation, concrètement
+
+`SyncRepository` reçoit le compte à la construction, depuis le jeton d'accès. **Aucune de ses
+méthodes ne prend d'identifiant d'utilisateur**, donc il n'existe pas de signature dans laquelle
+une valeur venue du corps d'une requête pourrait se glisser. Le compte fait partie de la clé
+primaire : deux enseignants peuvent porter le même `entityId` sans jamais se voir.
+
+### Ce qui fuit malgré tout
+
+Le serveur connaît le **nombre** d'enregistrements par compte et **l'horodatage de chaque saisie**,
+soit un profil d'activité (« 12 saisies le 3 mars à 9 h »). Aucun nom, aucun texte, aucun tag.
+
+S'y ajoute une fuite **entre comptes**, plus ténue : la séquence `seq_sync_records_revision` est
+globale, donc les trous entre deux révisions successives d'un même compte révèlent le **volume**
+d'écritures des autres comptes dans l'intervalle. Ni qui, ni quoi, ni quand précisément — un simple
+compteur d'activité globale.
+
+C'est un choix, pas un oubli. Une séquence par compte imposerait de lire le maximum du compte puis
+de l'incrémenter, ce qui remplacerait l'upsert atomique et sans verrou par une lecture-écriture à
+sérialiser, avec sa boucle de reprise en cas de collision entre deux appareils. Le renseignement
+gagné — « il s'est passé quelque chose ailleurs » — est strictement moins précis que ce que le
+serveur sait déjà de chaque compte pris isolément, et qui est assumé plus haut.
+
+Durcissements possibles, hors périmètre : chiffrer `entity_type`, arrondir `clientUpdatedAt`,
+padder les enveloppes, et donc une séquence par compte.
+
 ## Variables d'environnement
 
 Voir `.env.example` à la racine. `SECRET_KEY` est obligatoire dès

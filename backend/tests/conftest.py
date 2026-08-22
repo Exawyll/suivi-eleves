@@ -60,16 +60,21 @@ async def _create_database_if_missing() -> None:
         await admin_engine.dispose()
 
 
+def alembic_config(url: URL) -> Config:
+    """Alembic pointed at `url` rather than at the application's database."""
+    config = Config(str(BACKEND_ROOT / "alembic.ini"))
+    config.set_main_option("script_location", str(BACKEND_ROOT / "alembic"))
+    config.set_main_option("sqlalchemy.url", url.render_as_string(hide_password=False))
+    return config
+
+
 def _migrate(url: URL) -> None:
     """Builds the schema by running the real migrations, not create_all.
 
     That way every run proves the Alembic revisions still produce the schema
     the code expects — a create_all suite stays green while production drifts.
     """
-    alembic_config = Config(str(BACKEND_ROOT / "alembic.ini"))
-    alembic_config.set_main_option("script_location", str(BACKEND_ROOT / "alembic"))
-    alembic_config.set_main_option("sqlalchemy.url", url.render_as_string(hide_password=False))
-    command.upgrade(alembic_config, "head")
+    command.upgrade(alembic_config(url), "head")
 
 
 async def _truncate(url: URL) -> None:
@@ -98,6 +103,12 @@ def database() -> Iterator[None]:
     app.dependency_overrides[get_db] = _override_get_db
     yield
     app.dependency_overrides.pop(get_db, None)
+
+
+@pytest.fixture
+def migration_config(database: None) -> Config:
+    """Alembic, aimed at the scratch database the schema was built in."""
+    return alembic_config(TEST_URL)
 
 
 @pytest.fixture
