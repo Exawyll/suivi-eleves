@@ -77,6 +77,23 @@ async function parseDetail(response: Response): Promise<string> {
   return 'Une erreur est survenue.'
 }
 
+/**
+ * A 200 is not a promise of the right shape. Trusting it would put `undefined`
+ * in the token slots — every later request going out as `Bearer undefined`,
+ * and that unusable pair written into the vault over the refresh token that
+ * still worked.
+ */
+function isTokenPair(body: unknown): body is { accessToken: string; refreshToken: string } {
+  if (body === null || typeof body !== 'object') return false
+  const { accessToken, refreshToken } = body as Record<string, unknown>
+  return (
+    typeof accessToken === 'string' &&
+    accessToken !== '' &&
+    typeof refreshToken === 'string' &&
+    refreshToken !== ''
+  )
+}
+
 async function refreshOnce(): Promise<string | null> {
   // Captured up front and checked again below: `hooks` may be replaced while
   // the request is in the air.
@@ -112,7 +129,10 @@ async function refreshOnce(): Promise<string | null> {
     throw new ApiError(response.status, await parseDetail(response))
   }
 
-  const session = await parseJson<{ accessToken: string; refreshToken: string }>(response)
+  const session = await parseJson<unknown>(response)
+  // Not a session loss: a malformed body means the server is misbehaving, the
+  // same as the 500 above. The refresh token in hand may well still be good.
+  if (!isTokenPair(session)) throw new ApiError(response.status, 'Réponse inattendue du serveur.')
 
   // Checked again, after the last await. The token store behind these hooks is
   // shared, so handing the old account's tokens to whoever is signed in now

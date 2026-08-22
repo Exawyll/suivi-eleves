@@ -169,6 +169,27 @@ describe('rafraîchissement du jeton', () => {
     expect(hooks.onSessionLost).not.toHaveBeenCalled()
   })
 
+  it('refuse une rotation dont le corps n’a pas la bonne forme', async () => {
+    // A 200 carrying the wrong JSON would otherwise store `undefined` as the
+    // pair: every later request goes out as `Bearer undefined`, and the vault
+    // gets that written over a refresh token that still worked.
+    vi.stubGlobal(
+      'fetch',
+      vi.fn<Fetch>(async (input) =>
+        String(input).endsWith('/auth/refresh')
+          ? json(200, { message: 'ok' })
+          : json(401, { detail: 'non' }),
+      ),
+    )
+
+    await expect(apiRequest('/sync/status')).rejects.toBeInstanceOf(ApiError)
+    // The tokens in hand are untouched — the server misbehaved, the session
+    // did not expire.
+    expect(hooks.onRefreshed).not.toHaveBeenCalled()
+    expect(hooks.onSessionLost).not.toHaveBeenCalled()
+    expect(tokens.refresh).toBe('refresh-1')
+  })
+
   it('rend une réponse non-JSON comme une erreur, pas comme un plantage', async () => {
     // A proxy or a maintenance page can answer 200 with HTML.
     vi.stubGlobal(
