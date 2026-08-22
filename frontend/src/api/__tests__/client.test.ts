@@ -11,6 +11,14 @@ interface Hooks {
 let tokens: { access: string | null; refresh: string | null }
 let hooks: Hooks
 
+function deferred(): { promise: Promise<void>; resolve: () => void } {
+  let resolve: () => void = () => {}
+  const promise = new Promise<void>((r) => {
+    resolve = r
+  })
+  return { promise, resolve }
+}
+
 function json(status: number, body: unknown): Response {
   return new Response(JSON.stringify(body), {
     status,
@@ -189,6 +197,60 @@ describe('rafraîchissement du jeton', () => {
     ).rejects.toThrow('Adresse ou mot de passe incorrect.')
     expect(fetchMock).toHaveBeenCalledTimes(1)
     expect(hooks.onSessionLost).not.toHaveBeenCalled()
+  })
+
+  it('ne rejoue pas la requête d’un compte avec le jeton de celui qui vient de se connecter', async () => {
+    // A request belongs to whoever made it. If someone else signs in while it
+    // is in the air, the rotation that follows would mint a token for the *new*
+    // account — and replaying with it would read or write the wrong teacher's
+    // carnet.
+    const inFlight = deferred()
+    const switched = deferred()
+    const sent: Array<{ url: string; authorization: string | undefined }> = []
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn<Fetch>(async (input, init) => {
+        const url = String(input)
+        const headers = (init?.headers ?? {}) as Record<string, string>
+        sent.push({ url, authorization: headers.authorization })
+
+        if (url.endsWith('/auth/refresh')) {
+          return json(200, { accessToken: 'jeton-de-b', refreshToken: 'refresh-b2' })
+        }
+        // Only the first business call waits: it is the one that outlives its
+        // session.
+        if (sent.filter((call) => !call.url.endsWith('/auth/refresh')).length === 1) {
+          inFlight.resolve()
+          await switched.promise
+          return json(401, { detail: 'non' })
+        }
+        return json(200, { ok: true })
+      }),
+    )
+
+    const pending = apiRequest('/sync/status')
+    await inFlight.promise
+
+    // A second teacher signs in on the same device.
+    const other = { access: 'expiré-b', refresh: 'refresh-b' }
+    configureApiAuth({
+      accessToken: () => other.access,
+      refreshToken: () => other.refresh,
+      onRefreshed: (next) => {
+        other.access = next.accessToken
+        other.refresh = next.refreshToken
+      },
+      onSessionLost: () => {},
+    })
+    switched.resolve()
+
+    await expect(pending).rejects.toBeInstanceOf(ApiError)
+    // The two halves of the rule: nothing was replayed under the new account,
+    // and the new account's session was never touched to do it.
+    expect(sent.some((call) => call.authorization === 'Bearer jeton-de-b')).toBe(false)
+    expect(sent.some((call) => call.url.endsWith('/auth/refresh'))).toBe(false)
+    expect(other.refresh).toBe('refresh-b')
   })
 
   it('rend une coupure réseau lisible plutôt qu’un TypeError', async () => {

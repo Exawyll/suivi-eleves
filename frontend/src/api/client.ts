@@ -173,9 +173,17 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
     }
   }
 
-  let response = await send(anonymous ? null : (hooks?.accessToken() ?? null))
+  let response = await send(anonymous ? null : (owner?.accessToken() ?? null))
 
   if (response.status === 401 && !anonymous) {
+    // Someone signed in while this request was in the air, so it has outlived
+    // the session that made it. Rotating now would mint a token for the *new*
+    // account and replay one teacher's request under another's identity —
+    // reading or writing the wrong carnet. A rotation started before the
+    // switch is already covered: `refreshOnce` drops its result rather than
+    // hand it across accounts, and this call then gets `null`.
+    if (hooks !== owner) throw new ApiError(401, await parseDetail(response))
+
     const refreshed = await refreshAccessToken()
     if (refreshed === null) throw new ApiError(401, await parseDetail(response))
 
