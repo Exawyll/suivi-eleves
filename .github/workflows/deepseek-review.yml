@@ -47,12 +47,12 @@ jobs:
           payload=$(jq -n --rawfile diff pr.diff '{
             model: "deepseek-v4-pro",
             temperature: 0.2,
-            # A ceiling is what makes the request finish in seconds rather
-            # than expire. Keep it generous: the budget also covers reasoning
-            # tokens, and at 900 all of it went there and the answer came back
-            # empty. Mind the quoting here too, this comment sits inside the
-            # single-quoted jq program: one apostrophe closes it.
-            max_tokens: 4000,
+            # No max_tokens on purpose. It made the call return in seconds
+            # with an empty content field, at 900 and again at 4000 — this
+            # model spends the budget on reasoning first. The deadline below
+            # is what bounds the request instead.
+            # Mind the quoting in this comment: it sits inside the
+            # single-quoted jq program, where one apostrophe closes it.
             messages: [
               {role: "system", content: "Tu es un reviewer de code senior. Analyse ce diff de pull request et signale uniquement les bugs réels, failles de sécurité et régressions probables — pas de style ni de formatage. Réponds en français, en liste à puces, une ligne par problème avec le fichier concerné si identifiable. Si tu ne vois rien à signaler, dis-le explicitement en une phrase."},
               {role: "user", content: $diff}
@@ -90,6 +90,9 @@ jobs:
           # exactly how a 200 response with an empty content field behaved.
           if [ -z "$review" ]; then
             echo "DeepSeek returned an empty review — leaving the previous comment in place."
+            # Printed so the next occurrence is diagnosable from the log alone:
+            # an empty content field with a 200 says nothing by itself.
+            jq -c '{choices: (.choices | map(del(.message.content))), usage}' response.json || true
             exit 0
           fi
 
