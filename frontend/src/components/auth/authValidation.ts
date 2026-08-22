@@ -26,6 +26,12 @@ export function validateSignup(fields: SignupFields): string | null {
   if (!EMAIL_PATTERN.test(fields.email.trim())) {
     return 'Adresse email invalide.'
   }
+  // Length is measured on the password as typed, never on a trimmed copy: the
+  // spaces are part of the secret and part of the key derived from it. What is
+  // refused is a password made of nothing else, which is a typo, not a choice.
+  if (fields.password.trim() === '') {
+    return 'Le mot de passe ne peut pas être composé uniquement d’espaces.'
+  }
   if (fields.password.length < MIN_PASSWORD_LENGTH) {
     return `Le mot de passe doit faire au moins ${MIN_PASSWORD_LENGTH} caractères.`
   }

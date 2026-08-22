@@ -30,6 +30,22 @@ describe('validation de l’inscription', () => {
     )
   })
 
+  it('refuse un mot de passe fait uniquement d’espaces', () => {
+    // Not trimmed for length: spaces inside a password are part of the secret
+    // and part of the key derived from it. A password of nothing else is a
+    // typo, and this is the only place to catch it.
+    expect(
+      validateSignup({ ...VALID, password: '        ', passwordConfirm: '        ' }),
+    ).toContain('espaces')
+  })
+
+  it('accepte un mot de passe qui contient des espaces', () => {
+    const withSpaces = 'trois petits chats'
+    expect(
+      validateSignup({ ...VALID, password: withSpaces, passwordConfirm: withSpaces }),
+    ).toBeNull()
+  })
+
   it('refuse deux mots de passe différents', () => {
     expect(validateSignup({ ...VALID, passwordConfirm: 'autre chose' })).toContain(
       'ne correspondent pas',

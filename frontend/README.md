@@ -82,11 +82,11 @@ bout-en-bout serait décoratif : le serveur ne verrait rien, mais l'appareil tou
 
 ### Trois états, une seule clé
 
-| État | Ce que ça veut dire |
-|---|---|
-| `anonymous` | Aucun compte sur cet appareil. Connexion ou inscription. |
-| `locked` | Un compte est connu, sa clé a disparu (déconnexion, données de site effacées). Le mot de passe la reconstruit, **sans réseau**. |
-| `unlocked` | La clé de données est en main, le carnet est lisible. |
+| État        | Ce que ça veut dire                                                                                                             |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `anonymous` | Aucun compte sur cet appareil. Connexion ou inscription.                                                                        |
+| `locked`    | Un compte est connu, sa clé a disparu (déconnexion, données de site effacées). Le mot de passe la reconstruit, **sans réseau**. |
+| `unlocked`  | La clé de données est en main, le carnet est lisible.                                                                           |
 
 Une fois déverrouillée, la clé est rangée **dans IndexedDB** sous forme de `CryptoKey` non
 extractible : elle survit aux redémarrages sans jamais exister comme octets lisibles par un script,

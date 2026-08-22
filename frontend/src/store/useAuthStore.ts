@@ -123,16 +123,24 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
       return
     }
 
-    const dek = await recallDataKey(session.userId)
-    if (dek === null) {
-      set({ status: 'locked', session })
-      return
-    }
+    try {
+      const dek = await recallDataKey(session.userId)
+      if (dek === null) {
+        set({ status: 'locked', session })
+        return
+      }
 
-    refreshToken = await readRefreshToken(session.userId, dek)
-    wireApiAuth(session.userId, dek)
-    await attachVault(session.userId, dek)
-    set({ status: 'unlocked', session, error: null, needsReauth: refreshToken === null })
+      refreshToken = await readRefreshToken(session.userId, dek)
+      wireApiAuth(session.userId, dek)
+      await attachVault(session.userId, dek)
+      set({ status: 'unlocked', session, error: null, needsReauth: refreshToken === null })
+    } catch {
+      // Whatever went wrong — unusable storage, a corrupted vault — the app
+      // must not sit on a blank loading screen for ever. Falling back to the
+      // unlock screen is always answerable: the password rebuilds the key, and
+      // nothing has been destroyed.
+      set({ status: 'locked', session, error: null })
+    }
   },
 
   signup: async ({ email, firstName, lastName, password }) => {

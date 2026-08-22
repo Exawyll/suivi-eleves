@@ -62,11 +62,21 @@ async function refreshOnce(): Promise<string | null> {
   const token = hooks?.refreshToken() ?? null
   if (token === null) return null
 
-  const response = await fetch(`${API_BASE}/auth/refresh`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ refreshToken: token }),
-  })
+  let response: Response
+  try {
+    response = await fetch(`${API_BASE}/auth/refresh`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ refreshToken: token }),
+    })
+  } catch {
+    // A rotation that could not be attempted is not a rotation that was
+    // refused. Letting the raw TypeError escape would surface as an unknown
+    // failure; calling onSessionLost would be worse still, telling a teacher
+    // on a train that their session expired.
+    throw new OfflineError()
+  }
+
   if (!response.ok) {
     hooks?.onSessionLost()
     return null
@@ -117,7 +127,12 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
   if (response.status === 401 && !anonymous) {
     const refreshed = await refreshAccessToken()
     if (refreshed === null) throw new ApiError(401, await parseDetail(response))
+
     response = await send(refreshed)
+    // Refused again, with a token minted seconds ago: the account is gone, or
+    // the server no longer accepts it. Silence here would leave the client
+    // retrying for ever against a session that is not coming back.
+    if (response.status === 401) hooks?.onSessionLost()
   }
 
   if (!response.ok) throw new ApiError(response.status, await parseDetail(response))
