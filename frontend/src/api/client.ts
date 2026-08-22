@@ -152,6 +152,10 @@ interface RequestOptions {
 
 export async function apiRequest<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const { method = 'GET', body, anonymous = false } = options
+  // Whose request this is. Someone else may sign in while it is in the air,
+  // and a failure belonging to one account must never be reported against
+  // another's session.
+  const owner = hooks
 
   const send = async (token: string | null): Promise<Response> => {
     const headers: Record<string, string> = {}
@@ -179,7 +183,7 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
     // Refused again, with a token minted seconds ago: the account is gone, or
     // the server no longer accepts it. Silence here would leave the client
     // retrying for ever against a session that is not coming back.
-    if (response.status === 401) hooks?.onSessionLost()
+    if (response.status === 401 && hooks === owner) owner?.onSessionLost()
   }
 
   if (!response.ok) throw new ApiError(response.status, await parseDetail(response))

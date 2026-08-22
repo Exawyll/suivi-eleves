@@ -34,6 +34,19 @@ function openDatabase(): Promise<IDBDatabase | null> {
         request.result.createObjectStore(STORE)
       }
     }
+    // `onblocked` can fire and `onsuccess` arrive afterwards. Without this
+    // flag the second connection would be handed to nobody and never closed,
+    // and a leaked connection is what blocks the *next* open or upgrade.
+    let settled = false
+    const settle = (database: IDBDatabase | null) => {
+      if (settled) {
+        database?.close()
+        return
+      }
+      settled = true
+      resolve(database)
+    }
+
     request.onsuccess = () => {
       // A database at the right version but without the store cannot be
       // upgraded into shape, and every operation on it would throw. Treating
@@ -41,13 +54,13 @@ function openDatabase(): Promise<IDBDatabase | null> {
       // far better failure than silently never remembering the key.
       if (!request.result.objectStoreNames.contains(STORE)) {
         request.result.close()
-        resolve(null)
+        settle(null)
         return
       }
-      resolve(request.result)
+      settle(request.result)
     }
-    request.onerror = () => resolve(null)
-    request.onblocked = () => resolve(null)
+    request.onerror = () => settle(null)
+    request.onblocked = () => settle(null)
   })
 }
 

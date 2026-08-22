@@ -23,6 +23,22 @@ export async function generateDataKey(): Promise<CryptoKey> {
   return crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, true, DEK_USAGES)
 }
 
+/**
+ * Re-wraps the data key under a key derived from a new password.
+ *
+ * The carnet itself is untouched: it is encrypted with the data key, which
+ * does not change. This is why a password change costs one request whatever
+ * the carnet weighs.
+ */
+export async function rewrapDataKey(
+  wrapped: WrappedDataKey,
+  currentKek: CryptoKey,
+  nextKek: CryptoKey,
+): Promise<WrappedDataKey> {
+  const transient = await unwrapDataKey(wrapped, currentKek, true)
+  return wrapDataKey(transient, nextKek)
+}
+
 export async function wrapDataKey(dek: CryptoKey, kek: CryptoKey): Promise<WrappedDataKey> {
   const nonce = crypto.getRandomValues(new Uint8Array(DEK_NONCE_BYTES))
   const wrapped = await crypto.subtle.wrapKey('raw', dek, kek, {
@@ -32,17 +48,31 @@ export async function wrapDataKey(dek: CryptoKey, kek: CryptoKey): Promise<Wrapp
   return { wrappedDek: bytesToBase64(new Uint8Array(wrapped)), dekNonce: bytesToBase64(nonce) }
 }
 
-/** Throws if the password was wrong: AES-GCM authentication fails, loudly. */
-export async function unwrapDataKey(wrapped: WrappedDataKey, kek: CryptoKey): Promise<CryptoKey> {
+/**
+ * Throws if the password was wrong: AES-GCM authentication fails, loudly.
+ *
+ * `extractable` is false for the key the app actually keeps — nothing needs
+ * its raw bytes again, and a key that cannot be read cannot be exfiltrated by
+ * a script.
+ *
+ * The one exception is changing the password, which has to re-wrap the data
+ * key and where `crypto.subtle.wrapKey` refuses a non-extractable one. Rather
+ * than keeping an extractable key for ever against that single moment,
+ * `rewrapDataKey` unwraps a throwaway copy from the same stored envelope. The
+ * kept key stays unreadable.
+ */
+export async function unwrapDataKey(
+  wrapped: WrappedDataKey,
+  kek: CryptoKey,
+  extractable = false,
+): Promise<CryptoKey> {
   return crypto.subtle.unwrapKey(
     'raw',
     base64ToBytes(wrapped.wrappedDek) as BufferSource,
     kek,
     { name: 'AES-GCM', iv: base64ToBytes(wrapped.dekNonce) as BufferSource },
     { name: 'AES-GCM' },
-    // Not extractable from here on: nothing in the app needs the raw bytes
-    // again, and a key that cannot be read cannot be exfiltrated by a script.
-    false,
+    extractable,
     DEK_USAGES,
   )
 }

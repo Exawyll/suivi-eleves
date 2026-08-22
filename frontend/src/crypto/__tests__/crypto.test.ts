@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { deriveCredentials, randomKdfSalt } from '@/crypto/kdf'
-import { generateDataKey, unwrapDataKey, wrapDataKey } from '@/crypto/vault'
+import { generateDataKey, rewrapDataKey, unwrapDataKey, wrapDataKey } from '@/crypto/vault'
 import { openRecord, sealRecord } from '@/crypto/envelope'
 
 // WebCrypto signals every failure — wrong key, tampered bytes, mismatched
@@ -76,18 +76,32 @@ describe('clé de données', () => {
   })
 
   it('survit à un changement de mot de passe sans re-chiffrer le carnet', async () => {
-    const oldSalt = randomKdfSalt()
-    const { kek: oldKek } = await deriveCredentials('avant', oldSalt, FAST)
-    const dek = await generateDataKey()
-    const sealed = await sealRecord(dek, 'eleve', 'e1', { name: 'Camille' })
+    // Walks the production path, which an earlier version of this test did
+    // not: it re-wrapped the freshly *generated* key, which is extractable,
+    // and so never exercised what the app actually holds — a non-extractable
+    // key that `crypto.subtle.wrapKey` flatly refuses.
+    const { kek: oldKek } = await deriveCredentials('avant', randomKdfSalt(), FAST)
+    const wrapped = await wrapDataKey(await generateDataKey(), oldKek)
+    const inUse = await unwrapDataKey(wrapped, oldKek)
+    const sealed = await sealRecord(inUse, 'eleve', 'e1', { name: 'Camille' })
+    expect(inUse.extractable).toBe(false)
 
-    // A change re-wraps the data key under a new salt. Nothing else moves.
     const { kek: newKek } = await deriveCredentials('après', randomKdfSalt(), FAST)
-    const rewrapped = await wrapDataKey(dek, newKek)
+    const rewrapped = await rewrapDataKey(wrapped, oldKek, newKek)
 
     const recovered = await unwrapDataKey(rewrapped, newKek)
     expect(await openRecord(recovered, 'eleve', 'e1', sealed)).toEqual({ name: 'Camille' })
     await expect(unwrapDataKey(rewrapped, oldKek)).rejects.toBeDefined()
+  })
+
+  it('refuse de ré-envelopper la clé que l’application garde en main', async () => {
+    // The reason rewrapDataKey exists at all. Without it, changing the
+    // password would fail in production with InvalidAccessError while every
+    // test stayed green.
+    const { kek } = await deriveCredentials('mot de passe', randomKdfSalt(), FAST)
+    const kept = await unwrapDataKey(await wrapDataKey(await generateDataKey(), kek), kek)
+
+    await expect(wrapDataKey(kept, kek)).rejects.toBeDefined()
   })
 
   it('revient non extractible après déverrouillage', async () => {
