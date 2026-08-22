@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { useUiStore } from '@/store/useUiStore'
-import { useAppStore } from '@/store/useAppStore'
+import { seededDomainState, useAppStore } from '@/store/useAppStore'
 import { SEED_TAGS } from '@/seed/seedData'
 
 const DEFAULT_QUICK_ENTRY = {
@@ -176,9 +176,12 @@ describe('useUiStore: dispatch to the app store', () => {
   // Resets the shared UI singleton between tests without touching an ambient
   // `localStorage`: Node 26 ships its own experimental Web Storage global that
   // shadows jsdom's and reads as undefined unless --localstorage-file is passed.
-  // Assertions below are relative (`before + 1`, freshly-read `tags[0]`), so the
-  // domain store needs no reset.
+  //
+  // The domain singleton is filled here too. It now starts empty — signing in
+  // is what decides which carnet goes in it — so these dispatch tests provide
+  // the tags and students they dispatch against rather than inheriting them.
   beforeEach(() => {
+    useAppStore.setState(seededDomainState())
     useUiStore.setState({
       quickEntry: DEFAULT_QUICK_ENTRY,
       tagEditor: DEFAULT_TAG_EDITOR,

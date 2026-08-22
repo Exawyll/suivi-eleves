@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { Navigate, Outlet, Route, BrowserRouter, Routes } from 'react-router-dom'
 import { BottomTabBar } from '@/components/ui/BottomTabBar'
 import { Fab } from '@/components/ui/Fab'
@@ -11,6 +12,8 @@ import { DossierPage } from '@/pages/DossierPage'
 import { EtablissementsPage } from '@/pages/EtablissementsPage'
 import { SettingsPage } from '@/pages/SettingsPage'
 import { TagsPage } from '@/pages/TagsPage'
+import { AuthPage } from '@/pages/AuthPage'
+import { useAuthStore } from '@/store/useAuthStore'
 import styles from './App.module.css'
 
 function AppShell() {
@@ -31,6 +34,21 @@ function AppShell() {
 }
 
 export default function App() {
+  const status = useAuthStore((state) => state.status)
+  const restore = useAuthStore((state) => state.restore)
+
+  useEffect(() => {
+    void restore()
+  }, [restore])
+
+  // Nothing is rendered while the vault is being opened. The carnet store is
+  // empty until then, so showing the shell first would flash an empty app —
+  // or, worse, let a screen write to a store that is about to be replaced by
+  // what the vault holds.
+  if (status === 'loading') return null
+
+  if (status !== 'unlocked') return <AuthPage />
+
   return (
     <BrowserRouter>
       <Routes>

@@ -76,13 +76,10 @@ type AppActions =
   | 'togglePrincipalClasse'
   | 'renameClasse'
 
-/**
- * Seeded on first run only: this is the creator's initial state. Zustand's
- * persist middleware overwrites it wholesale with whatever was previously
- * saved to storage (even empty arrays), so a returning user's data is never
- * clobbered — only a truly empty storage leaves this seed data in place.
- */
-function initialDomainState(): Omit<AppState, AppActions> {
+export type DomainState = Omit<AppState, AppActions>
+
+/** The demo carnet a brand-new account starts from. */
+export function seededDomainState(): DomainState {
   return {
     etablissements: SEED_ETABLISSEMENTS,
     classes: SEED_CLASSES,
@@ -96,11 +93,52 @@ function initialDomainState(): Omit<AppState, AppActions> {
   }
 }
 
-export function createAppStore(storage: StateStorage = resolveDefaultStorage()) {
+/**
+ * What a signed-in device holds before its vault has been read.
+ *
+ * Empty rather than seeded: signing in on a second device must show that
+ * account's carnet, and a seed here would put a demo école in front of it for
+ * as long as the vault takes to open — or permanently, on a device that has
+ * nothing stored yet and is waiting for the first sync.
+ */
+export function emptyDomainState(): DomainState {
+  return {
+    etablissements: [],
+    classes: [],
+    eleves: [],
+    tagCategories: [],
+    tags: [],
+    events: [],
+    hasSeeded: false,
+    activeClasseId: null,
+    principalClasseId: null,
+  }
+}
+
+/** The storage key holding one account's encrypted carnet. */
+export function vaultKeyFor(userId: string): string {
+  return `carnet:vault:${userId}`
+}
+
+export interface AppStoreOptions {
+  /**
+   * Start from the demo carnet. False for the running app, which decides at
+   * sign-up whether to seed or to adopt an existing local carnet.
+   */
+  seeded?: boolean
+  /** Wait for an explicit rehydrate — the vault key is unknown until unlock. */
+  skipHydration?: boolean
+  name?: string
+}
+
+export function createAppStore(
+  storage: StateStorage = resolveDefaultStorage(),
+  { seeded = true, skipHydration = false, name = 'suivi-eleves:v1' }: AppStoreOptions = {},
+) {
   return create<AppState>()(
     persist(
       (set, get) => ({
-        ...initialDomainState(),
+        ...(seeded ? seededDomainState() : emptyDomainState()),
 
         logEvent: ({ targets, tagIds, noteText }) => {
           const trimmedNote = noteText.trim()
@@ -268,8 +306,9 @@ export function createAppStore(storage: StateStorage = resolveDefaultStorage()) 
         },
       }),
       {
-        name: 'suivi-eleves:v1',
+        name,
         version: 1,
+        skipHydration,
         storage: createJSONStorage(() => storage),
         partialize: (state) => ({
           etablissements: state.etablissements,
@@ -287,4 +326,12 @@ export function createAppStore(storage: StateStorage = resolveDefaultStorage()) 
   )
 }
 
-export const useAppStore = createAppStore()
+/**
+ * The application's store. It starts empty and unhydrated: which vault to open
+ * depends on who signs in, and with which key, so `useAuthStore` points it at
+ * one and rehydrates it once the data key is available.
+ */
+export const useAppStore = createAppStore(resolveDefaultStorage(), {
+  seeded: false,
+  skipHydration: true,
+})

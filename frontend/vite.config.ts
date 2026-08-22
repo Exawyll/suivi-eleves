@@ -42,6 +42,15 @@ export default defineConfig({
       '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
   },
+  server: {
+    // In production the API and the built frontend are the same origin, served
+    // by FastAPI. `npm run dev` is the one place they are not, so the dev
+    // server forwards /api rather than the app carrying a base-URL setting
+    // that only ever has one value in the deployment that matters.
+    proxy: {
+      '/api': { target: 'http://127.0.0.1:8000', changeOrigin: true },
+    },
+  },
   test: {
     environment: 'jsdom',
     globals: false,
