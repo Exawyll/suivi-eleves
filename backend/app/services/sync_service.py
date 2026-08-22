@@ -42,6 +42,14 @@ class SyncService:
         return PullResponse(records=envelopes, next_cursor=next_cursor, has_more=has_more)
 
     async def push(self, records: list[PushRecord]) -> PushResponse:
+        """Stores envelopes and reports the ones the server's version outranks.
+
+        Deliberately returns no cursor. Handing back the account's head
+        revision here would be a data-loss trap: a device sitting at revision 5
+        while another has pushed up to 20 would be told 21 after its own push,
+        and every pull from then on would start above the fifteen records it
+        never saw. A pull cursor may only ever advance through a pull.
+        """
         applied: list[AppliedRecord] = []
         rejected: list[tuple[str, str]] = []
 
@@ -62,11 +70,7 @@ class SyncService:
         # device of the same account may have pushed in between, and the client
         # has to be handed the version that actually stands.
         conflicts = [_envelope(record) for record in await self.records.get_many(rejected)]
-        return PushResponse(
-            applied=applied,
-            conflicts=conflicts,
-            cursor=await self.records.head_revision(),
-        )
+        return PushResponse(applied=applied, conflicts=conflicts)
 
     async def status(self) -> SyncStatusResponse:
         return SyncStatusResponse(

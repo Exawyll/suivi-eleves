@@ -360,6 +360,28 @@ def test_a_naive_timestamp_is_refused() -> None:
 
 
 @pytest.mark.usefixtures("clean_database")
+def test_a_push_never_hands_back_a_pull_cursor() -> None:
+    """The trap this omission exists to avoid, asserted rather than assumed.
+
+    A device pushing while it is behind must not be told where the stream now
+    ends: adopting that as its cursor would skip every record it never pulled.
+    """
+    behind = account("en-retard@example.org")
+    push(behind, record("eleve-1"))
+    cursor = pull(behind)["nextCursor"]
+
+    # Something else lands — another device of the same account, in practice.
+    push(behind, record("eleve-2", text="saisie de l'autre appareil"))
+    later = push(behind, record("eleve-3", text="saisie de cet appareil-ci"))
+
+    assert "cursor" not in later
+    # The only cursor that moves is the one a pull returns, and it still leads
+    # back to everything this device has not seen.
+    caught_up = pull(behind, since=cursor)
+    assert [r["entityId"] for r in caught_up["records"]] == ["eleve-2", "eleve-3"]
+
+
+@pytest.mark.usefixtures("clean_database")
 def test_status_reports_the_head_revision_and_the_count() -> None:
     headers = account("etat@example.org")
     applied = push(headers, record("eleve-1"), record("eleve-2"))["applied"]

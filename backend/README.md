@@ -69,6 +69,10 @@ jamais rien.
 
 - **Granularité par enregistrement**, pas par instantané : un instantané rendrait la fusion
   multi-appareil impossible et re-téléverserait tout le carnet à chaque note.
+- **Le curseur n'avance que par un pull.** `POST /sync/changes` ne renvoie délibérément aucun
+  curseur : rendre la révision de tête après un push serait un piège à perte de données — un
+  appareil resté à la révision 5 pendant qu'un autre a poussé jusqu'à 20 se verrait remettre 21, et
+  tous ses pulls suivants démarreraient au-dessus des quinze enregistrements qu'il n'a jamais vus.
 - **Curseur** = dernière `revision` vue. La séquence est globale et strictement croissante, donc
   utilisable telle quelle. Elle peut comporter des trous : une tentative d'écriture perdue en
   arbitrage consomme quand même un numéro.

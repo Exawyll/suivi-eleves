@@ -87,7 +87,6 @@ class PushResponse(CarnetSchema):
     # Envelopes the server kept because it holds a newer version. The client
     # applies them, overwriting what it tried to push.
     conflicts: list[RecordEnvelope]
-    cursor: int
 
 
 class SyncStatusResponse(CarnetSchema):
