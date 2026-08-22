@@ -49,3 +49,22 @@ export interface Tombstone {
 export function syncKey(entityType: SyncEntityType, entityId: Id): string {
   return `${entityType}:${entityId}`
 }
+
+/**
+ * A timestamp for a local write, guaranteed to differ from the last one.
+ *
+ * The wall clock is not enough. Two writes to the same record inside the same
+ * millisecond — a teacher correcting a name, an action firing twice — would
+ * carry the identical stamp, and the engine reads "same stamp" as "not touched
+ * since I sent it". It would then mark the record synchronised while holding
+ * the older of the two versions, and the newer one would never leave the
+ * device. Strictly increasing costs a millisecond of drift under a burst and
+ * makes local writes totally ordered, which is what the arbitration needs.
+ */
+let lastStamp = ''
+
+export function nextStamp(): string {
+  const now = new Date().toISOString()
+  lastStamp = now > lastStamp ? now : new Date(Date.parse(lastStamp) + 1).toISOString()
+  return lastStamp
+}

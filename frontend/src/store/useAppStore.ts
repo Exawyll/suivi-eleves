@@ -20,6 +20,7 @@ import {
 } from '@/seed/seedData'
 import { resolveDefaultStorage } from '@/store/memoryStorage'
 import {
+  nextStamp,
   PREFERENCE_ID,
   syncKey,
   type SyncEntityType,
@@ -209,7 +210,7 @@ export function createAppStore(
     state: AppState,
     ...records: ReadonlyArray<readonly [SyncEntityType, Id]>
   ): Pick<AppState, 'syncMeta'> => {
-    const updatedAt = new Date().toISOString()
+    const updatedAt = nextStamp()
     const syncMeta = { ...state.syncMeta }
     for (const [entityType, entityId] of records) {
       const key = syncKey(entityType, entityId)
@@ -228,7 +229,7 @@ export function createAppStore(
     state: AppState,
     ...records: ReadonlyArray<readonly [SyncEntityType, Id]>
   ): Pick<AppState, 'syncMeta' | 'tombstones'> => {
-    const updatedAt = new Date().toISOString()
+    const updatedAt = nextStamp()
     const syncMeta = { ...state.syncMeta }
     const tombstones = { ...state.tombstones }
     for (const [entityType, entityId] of records) {
