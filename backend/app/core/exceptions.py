@@ -9,6 +9,11 @@ class CarnetError(Exception):
     status_code: int = 400
     detail: str = "Requête invalide."
 
+    def __init__(self, detail: str | None = None) -> None:
+        """The class carries a sensible default; a caller may sharpen it."""
+        self.detail = detail or type(self).detail
+        super().__init__(self.detail)
+
 
 class NotFoundError(CarnetError):
     status_code = 404
@@ -23,3 +28,8 @@ class ConflictError(CarnetError):
 class AuthenticationError(CarnetError):
     status_code = 401
     detail = "Authentification requise."
+
+
+class TooManyAttemptsError(CarnetError):
+    status_code = 429
+    detail = "Trop de tentatives. Réessayez dans quelques minutes."
