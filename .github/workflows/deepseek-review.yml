@@ -47,6 +47,10 @@ jobs:
           payload=$(jq -n --rawfile diff pr.diff '{
             model: "deepseek-v4-pro",
             temperature: 0.2,
+            # The answer is a short bullet list; without a ceiling the request
+            # is only bounded by the model deciding to stop, which is what kept
+            # pushing it past the deadline.
+            max_tokens: 900,
             messages: [
               {role: "system", content: "Tu es un reviewer de code senior. Analyse ce diff de pull request et signale uniquement les bugs réels, failles de sécurité et régressions probables — pas de style ni de formatage. Réponds en français, en liste à puces, une ligne par problème avec le fichier concerné si identifiable. Si tu ne vois rien à signaler, dis-le explicitement en une phrase."},
               {role: "user", content: $diff}
@@ -58,7 +62,13 @@ jobs:
           # below — written precisely to keep this review advisory — would
           # never run. That is how a 120 s timeout on a large diff turned into
           # a red check on a pull request whose code was fine.
-          http_code=$(curl -sS -o response.json -w "%{http_code}" --max-time 300 \
+          #
+          # The deadline has moved twice since: a 60 KB diff genuinely takes
+          # minutes, and at 300 s the review still expired — leaving a stale
+          # comment standing while the job reported success, which is worse
+          # than a red check. 900 s plus the max_tokens ceiling above is what
+          # makes it actually finish.
+          http_code=$(curl -sS -o response.json -w "%{http_code}" --max-time 900 \
             https://api.deepseek.com/chat/completions \
             -H "Authorization: Bearer $DEEPSEEK_API_KEY" \
             -H "Content-Type: application/json" \
