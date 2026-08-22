@@ -9,7 +9,7 @@ import {
 import { SearchInput } from '@/components/ui/SearchInput'
 import { StudentRow } from '@/components/ui/StudentRow'
 import { EmptyState } from '@/components/ui/EmptyState'
-import { TEACHER_DISPLAY_NAME } from '@/seed/seedData'
+import { useAuthStore } from '@/store/useAuthStore'
 import styles from './DashboardPage.module.css'
 
 function todayLabel(): string {
@@ -31,6 +31,8 @@ export function DashboardPage() {
   const eleves = useAppStore((s) => s.eleves)
   const classes = useAppStore((s) => s.classes)
   const events = useAppStore((s) => s.events)
+  // The mockup greeted a hard-coded "Mme Roy"; there is a real account now.
+  const firstName = useAuthStore((s) => s.session?.firstName ?? '')
 
   const [search, setSearch] = useState('')
   const isSearching = search.trim() !== ''
@@ -42,7 +44,7 @@ export function DashboardPage() {
 
   return (
     <div className={styles.page}>
-      <h1 className={styles.greeting}>Bonjour, {TEACHER_DISPLAY_NAME}</h1>
+      <h1 className={styles.greeting}>Bonjour, {firstName}</h1>
       <div className={styles.date}>{todayLabel()}</div>
 
       <div className={styles.search}>
