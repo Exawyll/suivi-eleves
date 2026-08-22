@@ -7,7 +7,8 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.core.throttle import login_throttle
-from app.schemas.sync import MAX_CIPHERTEXT_BYTES, MAX_RECORDS_PER_PUSH
+from app.repositories.sync_repository import SyncRepository
+from app.schemas.sync import MAX_CIPHERTEXT_BYTES, MAX_RECORDS_PER_PUSH, PushRecord
 from main import app
 
 client = TestClient(app)
@@ -379,6 +380,39 @@ def test_a_push_never_hands_back_a_pull_cursor() -> None:
     # back to everything this device has not seen.
     caught_up = pull(behind, since=cursor)
     assert [r["entityId"] for r in caught_up["records"]] == ["eleve-2", "eleve-3"]
+
+
+@pytest.mark.usefixtures("clean_database")
+def test_a_push_that_fails_halfway_applies_nothing(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A batch is one transaction, so a failure cannot leave half of it stored.
+
+    Nothing in the service opens a transaction explicitly — the request-scoped
+    session does, committing once at the end and rolling back on any exception.
+    That is easy to assert by reading and easy to break by accident, so it is
+    asserted by breaking it: the third upsert of a five-record batch raises.
+    """
+    headers = account("atomique@example.org")
+    real_upsert = SyncRepository.upsert
+    calls = {"n": 0}
+
+    async def fails_on_the_third(self: SyncRepository, record: PushRecord) -> int | None:
+        calls["n"] += 1
+        if calls["n"] == 3:
+            raise RuntimeError("la base a lâché en plein lot")
+        return await real_upsert(self, record)
+
+    monkeypatch.setattr(SyncRepository, "upsert", fails_on_the_third)
+    tolerant = TestClient(app, raise_server_exceptions=False)
+
+    response = tolerant.post(
+        "/api/v1/sync/changes",
+        headers=headers,
+        json={"records": [record(f"eleve-{i}") for i in range(5)]},
+    )
+
+    assert response.status_code == 500
+    monkeypatch.undo()
+    assert pull(headers)["records"] == []
 
 
 @pytest.mark.usefixtures("clean_database")

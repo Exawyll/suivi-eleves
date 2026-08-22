@@ -96,8 +96,20 @@ primaire : deux enseignants peuvent porter le même `entityId` sans jamais se vo
 
 Le serveur connaît le **nombre** d'enregistrements par compte et **l'horodatage de chaque saisie**,
 soit un profil d'activité (« 12 saisies le 3 mars à 9 h »). Aucun nom, aucun texte, aucun tag.
+
+S'y ajoute une fuite **entre comptes**, plus ténue : la séquence `seq_sync_records_revision` est
+globale, donc les trous entre deux révisions successives d'un même compte révèlent le **volume**
+d'écritures des autres comptes dans l'intervalle. Ni qui, ni quoi, ni quand précisément — un simple
+compteur d'activité globale.
+
+C'est un choix, pas un oubli. Une séquence par compte imposerait de lire le maximum du compte puis
+de l'incrémenter, ce qui remplacerait l'upsert atomique et sans verrou par une lecture-écriture à
+sérialiser, avec sa boucle de reprise en cas de collision entre deux appareils. Le renseignement
+gagné — « il s'est passé quelque chose ailleurs » — est strictement moins précis que ce que le
+serveur sait déjà de chaque compte pris isolément, et qui est assumé plus haut.
+
 Durcissements possibles, hors périmètre : chiffrer `entity_type`, arrondir `clientUpdatedAt`,
-padder les enveloppes.
+padder les enveloppes, et donc une séquence par compte.
 
 ## Variables d'environnement
 
