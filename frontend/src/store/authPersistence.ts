@@ -25,7 +25,7 @@ export interface StoredSession {
 
 export function readSession(): StoredSession | null {
   try {
-    const raw = localStorage.getItem(SESSION_KEY)
+    const raw = resolveDefaultStorage().getItem(SESSION_KEY)
     return raw === null ? null : (JSON.parse(raw) as StoredSession)
   } catch {
     return null
@@ -34,7 +34,7 @@ export function readSession(): StoredSession | null {
 
 export function writeSession(session: StoredSession): void {
   try {
-    localStorage.setItem(SESSION_KEY, JSON.stringify(session))
+    resolveDefaultStorage().setItem(SESSION_KEY, JSON.stringify(session))
   } catch {
     // Unusable storage means no offline unlock, not a broken app.
   }
@@ -42,7 +42,7 @@ export function writeSession(session: StoredSession): void {
 
 export function clearSession(): void {
   try {
-    localStorage.removeItem(SESSION_KEY)
+    resolveDefaultStorage().removeItem(SESSION_KEY)
   } catch {
     // Nothing to do.
   }
@@ -68,7 +68,7 @@ export async function writeRefreshToken(
 
 export async function clearRefreshToken(userId: string): Promise<void> {
   try {
-    localStorage.removeItem(tokenKey(userId))
+    resolveDefaultStorage().removeItem(tokenKey(userId))
   } catch {
     // Nothing to do.
   }

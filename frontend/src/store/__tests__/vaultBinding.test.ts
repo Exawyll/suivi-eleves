@@ -4,6 +4,22 @@ import { createEncryptedStorage } from '@/store/encryptedStorage'
 import { seededDomainState, useAppStore, vaultKeyFor } from '@/store/useAppStore'
 import { resolveDefaultStorage } from '@/store/memoryStorage'
 
+/**
+ * Never `localStorage` directly: Node 26 ships an experimental Web Storage
+ * global that shadows jsdom's and reads as undefined unless
+ * --localstorage-file is passed, which is exactly how these tests passed
+ * locally and failed in CI. The resolver hands back whatever the application
+ * itself is using.
+ */
+const ACCOUNTS = ['u1', 'camille', 'dominique']
+
+function clearStorage(): void {
+  const storage = resolveDefaultStorage()
+  for (const account of ACCOUNTS) {
+    storage.removeItem(vaultKeyFor(account))
+  }
+}
+
 async function aKey(): Promise<CryptoKey> {
   return crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt'])
 }
@@ -26,7 +42,7 @@ async function settle(): Promise<void> {
 
 describe('branchement du coffre', () => {
   beforeEach(() => {
-    localStorage.clear()
+    clearStorage()
   })
 
   it('écrit l’état initial d’un compte neuf dans son coffre', async () => {

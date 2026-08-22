@@ -1,13 +1,17 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { LEGACY_STORAGE_KEY, discardLegacyCarnet, readLegacyCarnet } from '@/store/legacyCarnet'
+import { resolveDefaultStorage } from '@/store/memoryStorage'
 
+// Through the resolver, like the code under test: `localStorage` is not
+// reliably present under Node 26, which is how these tests passed locally and
+// failed in CI.
 function writeLegacy(state: unknown): void {
-  localStorage.setItem(LEGACY_STORAGE_KEY, JSON.stringify({ state, version: 1 }))
+  resolveDefaultStorage().setItem(LEGACY_STORAGE_KEY, JSON.stringify({ state, version: 1 }))
 }
 
 describe('reprise du carnet d’avant les comptes', () => {
   beforeEach(() => {
-    localStorage.clear()
+    resolveDefaultStorage().removeItem(LEGACY_STORAGE_KEY)
   })
 
   it('reprend un carnet réellement rempli', () => {
@@ -40,7 +44,7 @@ describe('reprise du carnet d’avant les comptes', () => {
   it('ignore une absence et un contenu illisible', () => {
     expect(readLegacyCarnet()).toBeNull()
 
-    localStorage.setItem(LEGACY_STORAGE_KEY, 'pas du json')
+    resolveDefaultStorage().setItem(LEGACY_STORAGE_KEY, 'pas du json')
     expect(readLegacyCarnet()).toBeNull()
   })
 
@@ -51,7 +55,7 @@ describe('reprise du carnet d’avant les comptes', () => {
 
     discardLegacyCarnet()
 
-    expect(localStorage.getItem(LEGACY_STORAGE_KEY)).toBeNull()
+    expect(resolveDefaultStorage().getItem(LEGACY_STORAGE_KEY)).toBeNull()
     expect(readLegacyCarnet()).toBeNull()
   })
 })

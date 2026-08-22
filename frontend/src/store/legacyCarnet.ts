@@ -1,3 +1,4 @@
+import { resolveDefaultStorage } from '@/store/memoryStorage'
 import type { DomainState } from '@/store/useAppStore'
 
 /**
@@ -27,11 +28,13 @@ function isNonEmpty(state: Partial<DomainState>): boolean {
 
 /** Returns the previous carnet, or null if there is nothing worth adopting. */
 export function readLegacyCarnet(): DomainState | null {
+  // Through the resolver rather than the global: `localStorage` is not always
+  // there to be touched, and Node exposes an experimental Web Storage global
+  // that reads as undefined.
   let raw: string | null
   try {
-    raw = localStorage.getItem(LEGACY_STORAGE_KEY)
+    raw = resolveDefaultStorage().getItem(LEGACY_STORAGE_KEY)
   } catch {
-    // Private windows and blocked site data throw on access.
     return null
   }
   if (raw === null) return null
@@ -62,7 +65,7 @@ export function readLegacyCarnet(): DomainState | null {
 /** Call only once the same carnet is safely inside the encrypted vault. */
 export function discardLegacyCarnet(): void {
   try {
-    localStorage.removeItem(LEGACY_STORAGE_KEY)
+    resolveDefaultStorage().removeItem(LEGACY_STORAGE_KEY)
   } catch {
     // Nothing to do: if it cannot be removed it could not have been read.
   }
