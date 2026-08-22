@@ -50,15 +50,20 @@ jobs:
             ]
           }')
 
-          http_code=$(curl -sS -o response.json -w "%{http_code}" --max-time 120 \
+          # `|| echo 000` matters: the step runs under `bash -e`, so a curl
+          # that times out or cannot connect would kill it here and the guard
+          # below — written precisely to keep this review advisory — would
+          # never run. That is how a 120 s timeout on a large diff turned into
+          # a red check on a pull request whose code was fine.
+          http_code=$(curl -sS -o response.json -w "%{http_code}" --max-time 300 \
             https://api.deepseek.com/chat/completions \
             -H "Authorization: Bearer $DEEPSEEK_API_KEY" \
             -H "Content-Type: application/json" \
-            -d "$payload")
+            -d "$payload" || echo 000)
 
           if [ "$http_code" != "200" ]; then
-            echo "DeepSeek API call failed (HTTP $http_code):"
-            cat response.json
+            echo "DeepSeek review unavailable (HTTP $http_code) — not blocking the PR."
+            cat response.json 2>/dev/null || true
             exit 0
           fi
 
