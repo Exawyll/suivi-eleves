@@ -43,6 +43,11 @@ let refreshInFlight: Promise<string | null> | null = null
 
 export function configureApiAuth(next: AuthHooks | null): void {
   hooks = next
+  // Any rotation still in flight belongs to the account being replaced. Left
+  // alone, it would resolve after the switch and hand the *new* session the
+  // old account's tokens — the one crossing of accounts this file could
+  // produce on its own.
+  refreshInFlight = null
 }
 
 async function parseDetail(response: Response): Promise<string> {
@@ -59,7 +64,10 @@ async function parseDetail(response: Response): Promise<string> {
 }
 
 async function refreshOnce(): Promise<string | null> {
-  const token = hooks?.refreshToken() ?? null
+  // Captured up front and checked again below: `hooks` may be replaced while
+  // the request is in the air.
+  const owner = hooks
+  const token = owner?.refreshToken() ?? null
   if (token === null) return null
 
   let response: Response
@@ -77,13 +85,15 @@ async function refreshOnce(): Promise<string | null> {
     throw new OfflineError()
   }
 
+  if (hooks !== owner) return null
+
   if (!response.ok) {
-    hooks?.onSessionLost()
+    owner?.onSessionLost()
     return null
   }
 
   const session = (await response.json()) as { accessToken: string; refreshToken: string }
-  hooks?.onRefreshed(session)
+  owner?.onRefreshed(session)
   return session.accessToken
 }
 

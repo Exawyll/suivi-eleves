@@ -104,6 +104,27 @@ verrouille pas l'application : la clé est en main, les notes sont lisibles, seu
 synchronisation s'arrête (`needsReauth`). Verrouiller enfermerait dans une boucle, puisqu'un
 déverrouillage hors-ligne ne restaure aucun jeton non plus.
 
+### Ce que ce schéma ne protège pas
+
+`authSecret` est dérivé du mot de passe, et le serveur en conserve un hash argon2id. Un serveur
+compromis peut donc tenter une **attaque par dictionnaire hors-ligne** : pour chaque mot de passe
+candidat, refaire PBKDF2 (600 000 itérations) puis argon2id, et comparer. S'il trouve, il dérive la
+KEK et lit le carnet.
+
+Ce n'est pas un contournement du chiffrement bout-en-bout, c'est son coût : tout schéma où un
+secret dérivé d'un mot de passe sert à l'authentification a cette propriété. Ce qui la rend chère
+est précisément ce qui est en place — 600 000 itérations PBKDF2 par essai, plus argon2id côté
+serveur. Ce qui la rend praticable, c'est un mot de passe faible. Le vrai correctif serait un
+protocole à mot de passe augmenté (OPAQUE, SRP), qui ne transmet aucun dérivé du mot de passe :
+hors périmètre, et un changement d'architecture, pas un correctif.
+
+Corollaire assumé : **le minimum de 6 caractères vient de la maquette et reste bas** pour une clé
+sans récupération possible. C'est un arbitrage produit, pas un oubli.
+
+Le nombre d'itérations renvoyé par le serveur est en revanche **refusé s'il est inférieur au
+minimum** (`assertUsableKdfParams`) : sans ce garde-fou, un serveur répondant `1` obtiendrait un
+`authSecret` dérivé en microsecondes, assez bon marché pour remonter au mot de passe.
+
 ### Reprise du carnet d'avant les comptes
 
 À l'inscription, si `suivi-eleves:v1` contient un vrai carnet, il devient celui du compte ; sinon

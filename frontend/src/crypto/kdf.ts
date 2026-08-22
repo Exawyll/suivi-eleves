@@ -11,6 +11,7 @@ import { base64ToBytes, bytesToBase64 } from '@/crypto/base64'
  */
 
 export const DEFAULT_KDF_ITERATIONS = 600_000
+export const MAX_KDF_ITERATIONS = 10_000_000
 export const KDF_SALT_BYTES = 16
 
 const AUTH_INFO = 'carnet:auth:v1'
@@ -59,6 +60,31 @@ export interface DerivedCredentials {
   kek: CryptoKey
 }
 
+/**
+ * Refuses key-derivation parameters that would weaken or stall the client.
+ *
+ * The iteration count arrives from the server, and the client cannot verify
+ * that it is the one the account was created with. A server answering `1`
+ * would get an authSecret derived in microseconds — cheap enough to brute-force
+ * back to the password, and from the password it could derive the real KEK. So
+ * the floor is enforced here, where the server has no say. The ceiling is the
+ * mirror image: a huge count would simply hang the browser.
+ */
+export function assertUsableKdfParams(iterations: number): void {
+  if (!Number.isInteger(iterations)) {
+    throw new Error('Paramètres de chiffrement invalides.')
+  }
+  if (iterations < DEFAULT_KDF_ITERATIONS || iterations > MAX_KDF_ITERATIONS) {
+    throw new Error('Paramètres de chiffrement refusés par sécurité.')
+  }
+}
+
+/**
+ * Deliberately does not enforce the bounds above: it is the primitive, and the
+ * tests exercise it with a cheap count on purpose. The check belongs where the
+ * untrusted value enters — see `useAuthStore`, which validates everything the
+ * server hands over before deriving anything from it.
+ */
 export async function deriveCredentials(
   password: string,
   salt: Uint8Array,

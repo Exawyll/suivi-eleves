@@ -2,7 +2,12 @@ import { create } from 'zustand'
 import { ApiError, OfflineError, configureApiAuth } from '@/api/client'
 import { fetchKdfParams, loginRequest, logoutRequest, signupRequest } from '@/api/auth'
 import type { ApiSession } from '@/api/auth'
-import { DEFAULT_KDF_ITERATIONS, deriveCredentials, randomKdfSalt } from '@/crypto/kdf'
+import {
+  DEFAULT_KDF_ITERATIONS,
+  assertUsableKdfParams,
+  deriveCredentials,
+  randomKdfSalt,
+} from '@/crypto/kdf'
 import { base64ToBytes, bytesToBase64 } from '@/crypto/base64'
 import { generateDataKey, unwrapDataKey, wrapDataKey } from '@/crypto/vault'
 import { forgetDataKey, recallDataKey, rememberDataKey } from '@/crypto/deviceKeyStore'
@@ -192,6 +197,10 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
     set({ busy: true, error: null })
     try {
       const params = await fetchKdfParams(email)
+      // Everything below is derived from a number the server chose. A server
+      // answering `1` would get an authSecret cheap enough to brute-force back
+      // to the password — and from the password, the real key to the carnet.
+      assertUsableKdfParams(params.kdfIterations)
       const { authSecret, kek } = await deriveCredentials(
         password,
         base64ToBytes(params.kdfSalt),
@@ -236,6 +245,9 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
 
     set({ busy: true, error: null })
     try {
+      // Stored locally, but it came from the server once. Checked again rather
+      // than trusted because it was written down.
+      assertUsableKdfParams(session.kdfIterations)
       const { kek } = await deriveCredentials(
         password,
         base64ToBytes(session.kdfSalt),
@@ -278,6 +290,7 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
     const session = get().session
     if (session === null) return
     try {
+      assertUsableKdfParams(session.kdfIterations)
       const { authSecret } = await deriveCredentials(
         password,
         base64ToBytes(session.kdfSalt),
