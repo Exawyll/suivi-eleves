@@ -47,10 +47,11 @@ jobs:
           payload=$(jq -n --rawfile diff pr.diff '{
             model: "deepseek-v4-pro",
             temperature: 0.2,
-            # The answer is a short bullet list; without a ceiling the request
-            # is only bounded by the model deciding to stop, which is what kept
-            # pushing it past the deadline.
-            max_tokens: 900,
+            # A ceiling is what makes the request finish in seconds rather
+            # than expire. It must stay generous: the budget covers the model's
+            # reasoning tokens too, and at 900 the whole of it went there and
+            # the answer came back empty.
+            max_tokens: 4000,
             messages: [
               {role: "system", content: "Tu es un reviewer de code senior. Analyse ce diff de pull request et signale uniquement les bugs réels, failles de sécurité et régressions probables — pas de style ni de formatage. Réponds en français, en liste à puces, une ligne par problème avec le fichier concerné si identifiable. Si tu ne vois rien à signaler, dis-le explicitement en une phrase."},
               {role: "user", content: $diff}
@@ -80,7 +81,18 @@ jobs:
             exit 0
           fi
 
-          { echo "## 🔎 Revue automatique — DeepSeek V4 Pro"; echo; jq -r '.choices[0].message.content' response.json; } > comment.md
+          review=$(jq -r '.choices[0].message.content // empty' response.json)
+
+          # An empty answer must not overwrite the standing review. Posting the
+          # heading with nothing under it makes the pull request look reviewed
+          # when nothing looked at it — the same trap as a stale comment, and
+          # exactly how a 200 response with an empty content field behaved.
+          if [ -z "$review" ]; then
+            echo "DeepSeek returned an empty review — leaving the previous comment in place."
+            exit 0
+          fi
+
+          { echo "## 🔎 Revue automatique — DeepSeek V4 Pro"; echo; echo "$review"; } > comment.md
 
           gh pr comment "$PR_NUMBER" --edit-last --body-file comment.md \
             || gh pr comment "$PR_NUMBER" --body-file comment.md
