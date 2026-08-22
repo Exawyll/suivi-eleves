@@ -3,7 +3,7 @@ from typing import Self
 from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-DEV_SECRET_KEY = "dev-insecure-change-me"
+DEV_SECRET_KEY = "dev-insecure-change-me-before-deploying"
 # 32 hex chars is what `openssl rand -hex 32` yields; shorter means someone typed it.
 MIN_PRODUCTION_SECRET_LENGTH = 32
 
