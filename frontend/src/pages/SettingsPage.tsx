@@ -3,6 +3,7 @@ import { useAppStore } from '@/store/useAppStore'
 import { useAuthStore } from '@/store/useAuthStore'
 import { ChevronRightIcon } from '@/components/icons/NavIcons'
 import { DisabledListRow } from '@/components/ui/DisabledListRow'
+import { SyncRow } from '@/components/settings/SyncRow'
 import styles from './SettingsPage.module.css'
 
 export function SettingsPage() {
@@ -60,7 +61,7 @@ export function SettingsPage() {
         <ChevronRightIcon />
       </button>
 
-      <DisabledListRow title="Sauvegarde locale" badge="Bientôt" />
+      <SyncRow />
       <DisabledListRow title="À propos" />
     </div>
   )

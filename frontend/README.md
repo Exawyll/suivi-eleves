@@ -131,3 +131,44 @@ minimum** (`assertUsableKdfParams`) : sans ce garde-fou, un serveur répondant `
 le jeu de démo est chargé. La copie en clair n'est supprimée **qu'une fois l'écriture chiffrée
 confirmée sur l'appareil** — l'effacer sur la foi d'une écriture encore en vol perdrait les notes
 d'un enseignant si l'onglet se fermait entre les deux.
+
+## Synchronisation
+
+Par enregistrement, jamais par instantané : un instantané rendrait la fusion multi-appareil
+impossible et re-téléverserait tout le carnet à chaque note. Le serveur ne range que des enveloppes
+opaques et n'arbitre que sur des métadonnées en clair — révision, horodatage client, pierre
+tombale. Détail du contrat côté serveur : `backend/README.md`.
+
+Trois tranches persistées à côté du carnet (`syncMeta`, `tombstones`, `cursor`). Les entités ne
+changent pas de forme ; ce qui s'ajoute, c'est **ce que l'appareil doit encore au serveur**.
+
+### Les règles autour desquelles le moteur est construit
+
+- **Toute action qui écrit passe par `touch` ou `bury`.** Une action qui modifierait le carnet sans
+  estampiller serait parfaitement correcte à l'écran et ne quitterait jamais l'appareil : la panne
+  serait silencieuse, d'où un seul helper plutôt que douze copies.
+- **Un push ne fait jamais avancer le curseur.** Le serveur n'en renvoie volontairement aucun, et
+  reprendre la révision qu'il vient d'attribuer ferait sauter tous les enregistrements qu'un autre
+  appareil a poussés et que celui-ci n'a jamais vus.
+- **Une modification locale plus récente survit au pull** et reste due — tout en prenant la
+  révision du serveur, ce qui fait du prochain push un écrasement direct plutôt qu'un conflit
+  qu'il gagnerait de toute façon.
+- **Un enregistrement re-touché pendant que son push était en vol n'est jamais marqué
+  synchronisé.** Le serveur détient la version d'avant cette modification.
+- **Une enveloppe qui ne se déchiffre pas ne change rien** — ni le carnet, ni la comptabilité.
+  C'est la mauvaise clé, ou une enveloppe déplacée d'un autre enregistrement.
+
+### Estampilles strictement croissantes
+
+`nextStamp()` garantit qu'une estampille locale diffère toujours de la précédente. L'horloge murale
+ne suffit pas : deux écritures sur le même enregistrement dans la même milliseconde porteraient le
+même horodatage, et le moteur lit « même horodatage » comme « pas retouché depuis l'envoi ». Il
+marquerait alors l'enregistrement synchronisé en détenant la plus ancienne des deux versions.
+
+### Limite connue : plusieurs onglets
+
+Le verrou de rafraîchissement des jetons (`src/api/client.ts`) est local au module, donc à
+l'onglet. Deux onglets peuvent rejouer le même refresh token ; le perdant reçoit un 401 et efface
+la copie de l'appareil, ce qui redemande le mot de passe au rechargement suivant. Aucune donnée
+n'est perdue. Le correctif est une coordination inter-onglets (`BroadcastChannel`, ou relecture du
+coffre avant de conclure à la perte) — **hors périmètre de ce lot**.
