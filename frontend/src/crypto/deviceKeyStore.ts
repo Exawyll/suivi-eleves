@@ -34,12 +34,34 @@ function openDatabase(): Promise<IDBDatabase | null> {
         request.result.createObjectStore(STORE)
       }
     }
-    request.onsuccess = () => resolve(request.result)
+    request.onsuccess = () => {
+      // A database at the right version but without the store cannot be
+      // upgraded into shape, and every operation on it would throw. Treating
+      // it as absent costs a password prompt at each cold start, which is a
+      // far better failure than silently never remembering the key.
+      if (!request.result.objectStoreNames.contains(STORE)) {
+        request.result.close()
+        resolve(null)
+        return
+      }
+      resolve(request.result)
+    }
     request.onerror = () => resolve(null)
     request.onblocked = () => resolve(null)
   })
 }
 
+/**
+ * Runs one operation and waits for its **transaction** to commit, not merely
+ * for the request to succeed.
+ *
+ * The difference matters for the writes. A request succeeding says the
+ * operation was accepted; only `oncomplete` says it is durable. Resolving on
+ * the request and closing the connection there let a caller act on a
+ * sign-out — say, by showing the unlock screen — while the key deletion had
+ * not yet landed, which is exactly the kind of "it did not take" that is
+ * impossible to reproduce afterwards.
+ */
 function runTransaction<T>(
   mode: IDBTransactionMode,
   action: (store: IDBObjectStore) => IDBRequest<T>,
@@ -51,19 +73,25 @@ function runTransaction<T>(
           resolve(null)
           return
         }
-        try {
-          const request = action(database.transaction(STORE, mode).objectStore(STORE))
-          request.onsuccess = () => {
-            resolve(request.result)
-            database.close()
-          }
-          request.onerror = () => {
-            resolve(null)
-            database.close()
-          }
-        } catch {
+
+        const settle = (value: T | null) => {
           database.close()
-          resolve(null)
+          resolve(value)
+        }
+
+        try {
+          const transaction = database.transaction(STORE, mode)
+          const request = action(transaction.objectStore(STORE))
+          let result: T | null = null
+
+          request.onsuccess = () => {
+            result = request.result
+          }
+          transaction.oncomplete = () => settle(result)
+          transaction.onabort = () => settle(null)
+          transaction.onerror = () => settle(null)
+        } catch {
+          settle(null)
         }
       }),
   )

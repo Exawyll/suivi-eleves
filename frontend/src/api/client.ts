@@ -113,6 +113,12 @@ async function refreshOnce(): Promise<string | null> {
   }
 
   const session = await parseJson<{ accessToken: string; refreshToken: string }>(response)
+
+  // Checked again, after the last await. The token store behind these hooks is
+  // shared, so handing the old account's tokens to whoever is signed in now
+  // would put one teacher's credentials on another's session.
+  if (hooks !== owner) return null
+
   owner?.onRefreshed(session)
   return session.accessToken
 }
