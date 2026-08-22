@@ -1,5 +1,5 @@
 import { resolveDefaultStorage } from '@/store/memoryStorage'
-import type { DomainState } from '@/store/useAppStore'
+import { owedInFull, type DomainState } from '@/store/useAppStore'
 
 /**
  * The carnet written before accounts existed, in plain text under a single
@@ -49,7 +49,9 @@ export function readLegacyCarnet(): DomainState | null {
   const state = parsed.state
   if (!state || !isNonEmpty(state)) return null
 
-  return {
+  // Owed in full: this carnet predates accounts, so the server has never seen
+  // any of it and all of it has to go up on the first sync.
+  return owedInFull({
     etablissements: state.etablissements ?? [],
     classes: state.classes ?? [],
     eleves: state.eleves ?? [],
@@ -59,7 +61,7 @@ export function readLegacyCarnet(): DomainState | null {
     hasSeeded: true,
     activeClasseId: state.activeClasseId ?? state.classes?.[0]?.id ?? null,
     principalClasseId: state.principalClasseId ?? null,
-  }
+  })
 }
 
 /** Call only once the same carnet is safely inside the encrypted vault. */
