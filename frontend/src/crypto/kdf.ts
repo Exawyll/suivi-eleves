@@ -70,11 +70,17 @@ export interface DerivedCredentials {
  * the floor is enforced here, where the server has no say. The ceiling is the
  * mirror image: a huge count would simply hang the browser.
  */
-export function assertUsableKdfParams(iterations: number): void {
+export function assertUsableKdfParams(iterations: number, salt?: Uint8Array): void {
   if (!Number.isInteger(iterations)) {
     throw new Error('Paramètres de chiffrement invalides.')
   }
   if (iterations < DEFAULT_KDF_ITERATIONS || iterations > MAX_KDF_ITERATIONS) {
+    throw new Error('Paramètres de chiffrement refusés par sécurité.')
+  }
+  // A short or empty salt is the same attack from the other side: it makes the
+  // derivation precomputable, so the authSecret this device sends could be
+  // looked up rather than cracked.
+  if (salt !== undefined && salt.length < KDF_SALT_BYTES) {
     throw new Error('Paramètres de chiffrement refusés par sécurité.')
   }
 }

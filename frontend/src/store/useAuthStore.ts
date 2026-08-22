@@ -200,12 +200,9 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
       // Everything below is derived from a number the server chose. A server
       // answering `1` would get an authSecret cheap enough to brute-force back
       // to the password — and from the password, the real key to the carnet.
-      assertUsableKdfParams(params.kdfIterations)
-      const { authSecret, kek } = await deriveCredentials(
-        password,
-        base64ToBytes(params.kdfSalt),
-        params.kdfIterations,
-      )
+      const loginSalt = base64ToBytes(params.kdfSalt)
+      assertUsableKdfParams(params.kdfIterations, loginSalt)
+      const { authSecret, kek } = await deriveCredentials(password, loginSalt, params.kdfIterations)
       const response = await loginRequest(email, authSecret)
       const session = sessionFrom(response)
       const dek = await unwrapDataKey(
@@ -247,12 +244,9 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
     try {
       // Stored locally, but it came from the server once. Checked again rather
       // than trusted because it was written down.
-      assertUsableKdfParams(session.kdfIterations)
-      const { kek } = await deriveCredentials(
-        password,
-        base64ToBytes(session.kdfSalt),
-        session.kdfIterations,
-      )
+      const storedSalt = base64ToBytes(session.kdfSalt)
+      assertUsableKdfParams(session.kdfIterations, storedSalt)
+      const { kek } = await deriveCredentials(password, storedSalt, session.kdfIterations)
       // Fails loudly on a wrong password: AES-GCM authenticates.
       const dek = await unwrapDataKey(
         { wrappedDek: session.wrappedDek, dekNonce: session.dekNonce },
@@ -290,12 +284,9 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
     const session = get().session
     if (session === null) return
     try {
-      assertUsableKdfParams(session.kdfIterations)
-      const { authSecret } = await deriveCredentials(
-        password,
-        base64ToBytes(session.kdfSalt),
-        session.kdfIterations,
-      )
+      const salt = base64ToBytes(session.kdfSalt)
+      assertUsableKdfParams(session.kdfIterations, salt)
+      const { authSecret } = await deriveCredentials(password, salt, session.kdfIterations)
       const response = await loginRequest(session.email, authSecret)
       accessToken = response.accessToken
       refreshToken = response.refreshToken

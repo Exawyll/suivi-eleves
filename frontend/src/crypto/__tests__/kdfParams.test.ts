@@ -21,6 +21,19 @@ describe('paramètres de dérivation venus du serveur', () => {
     expect(() => assertUsableKdfParams(Number.MAX_SAFE_INTEGER)).toThrow('sécurité')
   })
 
+  it('refuse un sel trop court', () => {
+    // The same attack from the other side: a short salt makes the derivation
+    // precomputable, so the authSecret this device sends could be looked up
+    // rather than cracked.
+    expect(() => assertUsableKdfParams(DEFAULT_KDF_ITERATIONS, new Uint8Array(0))).toThrow(
+      'sécurité',
+    )
+    expect(() => assertUsableKdfParams(DEFAULT_KDF_ITERATIONS, new Uint8Array(8))).toThrow(
+      'sécurité',
+    )
+    expect(() => assertUsableKdfParams(DEFAULT_KDF_ITERATIONS, new Uint8Array(16))).not.toThrow()
+  })
+
   it('refuse ce qui n’est pas un entier', () => {
     for (const invalid of [Number.NaN, Infinity, 600_000.5]) {
       expect(() => assertUsableKdfParams(invalid)).toThrow('invalides')

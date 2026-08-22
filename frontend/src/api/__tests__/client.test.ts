@@ -145,6 +145,38 @@ describe('rafraîchissement du jeton', () => {
     expect(hooks.onSessionLost).toHaveBeenCalledTimes(1)
   })
 
+  it('ne déconnecte pas parce que le serveur a une mauvaise minute', async () => {
+    // A 500 from the refresh endpoint is not an expired session. Signing the
+    // teacher out over it would throw away a session that is perfectly valid.
+    vi.stubGlobal(
+      'fetch',
+      vi.fn<Fetch>(async (input) =>
+        String(input).endsWith('/auth/refresh')
+          ? json(503, { detail: 'Maintenance' })
+          : json(401, { detail: 'non' }),
+      ),
+    )
+
+    await expect(apiRequest('/sync/status')).rejects.toBeInstanceOf(ApiError)
+    expect(hooks.onSessionLost).not.toHaveBeenCalled()
+  })
+
+  it('rend une réponse non-JSON comme une erreur, pas comme un plantage', async () => {
+    // A proxy or a maintenance page can answer 200 with HTML.
+    vi.stubGlobal(
+      'fetch',
+      vi.fn<Fetch>(
+        async () =>
+          new Response('<html>maintenance</html>', {
+            status: 200,
+            headers: { 'content-type': 'text/html' },
+          }),
+      ),
+    )
+
+    await expect(apiRequest('/sync/status')).rejects.toBeInstanceOf(ApiError)
+  })
+
   it('ne rafraîchit jamais sur un appel anonyme', async () => {
     // Sign-in answering 401 means "wrong password", not "expired session".
     const fetchMock = vi.fn<Fetch>(async () =>

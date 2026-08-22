@@ -50,6 +50,20 @@ export function configureApiAuth(next: AuthHooks | null): void {
   refreshInFlight = null
 }
 
+/**
+ * A successful status is not a promise of a JSON body: a proxy or a
+ * maintenance page can answer 200 with HTML. Without this, that surfaces as a
+ * raw SyntaxError from somewhere deep in the call, rather than as an error the
+ * caller can act on.
+ */
+async function parseJson<T>(response: Response): Promise<T> {
+  try {
+    return (await response.json()) as T
+  } catch {
+    throw new ApiError(response.status, 'Réponse inattendue du serveur.')
+  }
+}
+
 async function parseDetail(response: Response): Promise<string> {
   try {
     const body: unknown = await response.json()
@@ -88,22 +102,39 @@ async function refreshOnce(): Promise<string | null> {
   if (hooks !== owner) return null
 
   if (!response.ok) {
-    owner?.onSessionLost()
-    return null
+    // Only a refusal means the session is gone. A 500 or a 502 means the
+    // server is having a bad minute, and signing the teacher out over it would
+    // throw away a perfectly valid session — and their place in the app.
+    if (response.status === 401 || response.status === 403) {
+      owner?.onSessionLost()
+      return null
+    }
+    throw new ApiError(response.status, await parseDetail(response))
   }
 
-  const session = (await response.json()) as { accessToken: string; refreshToken: string }
+  const session = await parseJson<{ accessToken: string; refreshToken: string }>(response)
   owner?.onRefreshed(session)
   return session.accessToken
 }
 
 function refreshAccessToken(): Promise<string | null> {
-  // Everyone waits on the same rotation, and the flag clears whatever happens
+  if (refreshInFlight !== null) return refreshInFlight
+
+  // Everyone waits on the same rotation, and the slot clears whatever happens
   // — leaving it set would wedge every later request behind a settled promise.
-  refreshInFlight ??= refreshOnce().finally(() => {
-    refreshInFlight = null
+  // It clears only if it still holds *this* rotation: an account switch drops
+  // the slot mid-flight, and a finished rotation must not then wipe out the
+  // new one that took its place.
+  //
+  // Left untested on purpose. Reproducing the interleaving takes enough
+  // choreography that the test would be measuring the microtask scheduler
+  // rather than this guard — and a test that passes for the wrong reason is
+  // worse than none.
+  const rotation: Promise<string | null> = refreshOnce().finally(() => {
+    if (refreshInFlight === rotation) refreshInFlight = null
   })
-  return refreshInFlight
+  refreshInFlight = rotation
+  return rotation
 }
 
 interface RequestOptions {
@@ -147,5 +178,5 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
 
   if (!response.ok) throw new ApiError(response.status, await parseDetail(response))
   if (response.status === 204) return undefined as T
-  return (await response.json()) as T
+  return parseJson<T>(response)
 }
