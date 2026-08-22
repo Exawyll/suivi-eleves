@@ -1,4 +1,4 @@
-import { apiRequest } from '@/api/client'
+import { ApiError, apiRequest } from '@/api/client'
 
 /** Typed calls to the account API. No component ever calls `fetch` itself. */
 
@@ -35,6 +35,40 @@ export function fetchKdfParams(email: string): Promise<ApiKdfParams> {
   })
 }
 
+/**
+ * A 200 is not a promise of the right shape.
+ *
+ * Everything an account needs to be reopened arrives in this one response —
+ * the wrapped data key, its nonce, the salt and the iteration count. A field
+ * quietly missing would be written to the device as `undefined` and the carnet
+ * would refuse to open afterwards, with nothing left to say why. Better to
+ * fail here, before anything is stored.
+ */
+function isApiSession(body: unknown): body is ApiSession {
+  if (body === null || typeof body !== 'object') return false
+  const { accessToken, refreshToken, user, crypto: material } = body as Record<string, unknown>
+  if (typeof accessToken !== 'string' || accessToken === '') return false
+  if (typeof refreshToken !== 'string' || refreshToken === '') return false
+  if (user === null || typeof user !== 'object') return false
+  if (typeof (user as Record<string, unknown>).id !== 'string') return false
+  if (material === null || typeof material !== 'object') return false
+  const { kdfSalt, kdfIterations, wrappedDek, dekNonce } = material as Record<string, unknown>
+  return (
+    typeof kdfSalt === 'string' &&
+    kdfSalt !== '' &&
+    typeof kdfIterations === 'number' &&
+    typeof wrappedDek === 'string' &&
+    wrappedDek !== '' &&
+    typeof dekNonce === 'string' &&
+    dekNonce !== ''
+  )
+}
+
+function asSession(body: unknown): ApiSession {
+  if (!isApiSession(body)) throw new ApiError(502, 'Réponse inattendue du serveur.')
+  return body
+}
+
 export interface SignupPayload extends ApiCryptoMaterial {
   email: string
   firstName: string
@@ -42,20 +76,24 @@ export interface SignupPayload extends ApiCryptoMaterial {
   authSecret: string
 }
 
-export function signupRequest(payload: SignupPayload): Promise<ApiSession> {
-  return apiRequest<ApiSession>('/auth/signup', {
-    method: 'POST',
-    body: payload,
-    anonymous: true,
-  })
+export async function signupRequest(payload: SignupPayload): Promise<ApiSession> {
+  return asSession(
+    await apiRequest<unknown>('/auth/signup', {
+      method: 'POST',
+      body: payload,
+      anonymous: true,
+    }),
+  )
 }
 
-export function loginRequest(email: string, authSecret: string): Promise<ApiSession> {
-  return apiRequest<ApiSession>('/auth/login', {
-    method: 'POST',
-    body: { email, authSecret },
-    anonymous: true,
-  })
+export async function loginRequest(email: string, authSecret: string): Promise<ApiSession> {
+  return asSession(
+    await apiRequest<unknown>('/auth/login', {
+      method: 'POST',
+      body: { email, authSecret },
+      anonymous: true,
+    }),
+  )
 }
 
 export function logoutRequest(refreshToken: string): Promise<void> {

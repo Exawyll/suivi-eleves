@@ -300,12 +300,13 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
 
   logout: async () => {
     const session = get().session
+    let forgotten = true
     if (session !== null) {
       if (refreshToken !== null) {
         // Best effort: signing out must work with no network.
         await logoutRequest(refreshToken).catch(() => undefined)
       }
-      await forgetDataKey(session.userId)
+      forgotten = await forgetDataKey(session.userId)
       await clearRefreshToken(session.userId)
     }
 
@@ -313,6 +314,19 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
     refreshToken = null
     configureApiAuth(null)
     detachVault()
+
+    if (!forgotten) {
+      // The data key could not be removed, so it is still on this device: the
+      // next launch would reopen the carnet with no password, which is exactly
+      // what locking is for. Dropping the session metadata instead makes the
+      // lock real — `restore` finds no account and never asks for the key.
+      // It costs the offline reopen until the next sign-in, and costs nothing
+      // else: the encrypted carnet stays where it is.
+      clearSession()
+      set({ status: 'anonymous', session: null, error: null, needsReauth: false })
+      return
+    }
+
     // The session metadata stays: the encrypted carnet is still on this device
     // and the same password reopens it, with no network.
     set({ status: 'locked', error: null, needsReauth: false })

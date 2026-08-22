@@ -64,6 +64,14 @@ function openDatabase(): Promise<IDBDatabase | null> {
   })
 }
 
+type Outcome<T> =
+  /** The transaction committed. */
+  | { status: 'done'; value: T | null }
+  /** No usable database — so nothing was ever stored here to begin with. */
+  | { status: 'unavailable' }
+  /** The database is there and refused. The only outcome a caller must not ignore. */
+  | { status: 'failed' }
+
 /**
  * Runs one operation and waits for its **transaction** to commit, not merely
  * for the request to succeed.
@@ -78,18 +86,18 @@ function openDatabase(): Promise<IDBDatabase | null> {
 function runTransaction<T>(
   mode: IDBTransactionMode,
   action: (store: IDBObjectStore) => IDBRequest<T>,
-): Promise<T | null> {
+): Promise<Outcome<T>> {
   return openDatabase().then(
     (database) =>
-      new Promise<T | null>((resolve) => {
+      new Promise<Outcome<T>>((resolve) => {
         if (database === null) {
-          resolve(null)
+          resolve({ status: 'unavailable' })
           return
         }
 
-        const settle = (value: T | null) => {
+        const settle = (outcome: Outcome<T>) => {
           database.close()
-          resolve(value)
+          resolve(outcome)
         }
 
         try {
@@ -100,32 +108,56 @@ function runTransaction<T>(
           request.onsuccess = () => {
             result = request.result
           }
-          transaction.oncomplete = () => settle(result)
-          transaction.onabort = () => settle(null)
-          transaction.onerror = () => settle(null)
+          transaction.oncomplete = () => settle({ status: 'done', value: result })
+          transaction.onabort = () => settle({ status: 'failed' })
+          transaction.onerror = () => settle({ status: 'failed' })
         } catch {
-          settle(null)
+          settle({ status: 'failed' })
         }
       }),
   )
 }
 
+/**
+ * Written in place of a key that could not be deleted. `recallDataKey` reads
+ * anything that is not a `CryptoKey` as no key at all, so overwriting locks
+ * the account just as surely as removing.
+ */
+const TOMBSTONE = 'forgotten'
+
 /** Keyed by account: two teachers sharing a browser keep separate keys. */
 export async function rememberDataKey(userId: string, dek: CryptoKey): Promise<void> {
+  // A failure here costs a password prompt at the next cold start and nothing
+  // else: the key is rebuilt from the password, via the wrapped copy in the
+  // session. Not remembering is always a safe direction to fail in.
   await runTransaction('readwrite', (store) => store.put(dek, userId))
 }
 
 export async function recallDataKey(userId: string): Promise<CryptoKey | null> {
-  const stored = await runTransaction<unknown>('readonly', (store) => store.get(userId))
+  const outcome = await runTransaction<unknown>('readonly', (store) => store.get(userId))
+  if (outcome.status !== 'done') return null
   // A stored value that is not a CryptoKey means something else wrote here;
   // treating it as absent is the only safe reading.
-  return stored instanceof CryptoKey ? stored : null
+  return outcome.value instanceof CryptoKey ? outcome.value : null
 }
 
 /**
  * Signing out. The encrypted carnet stays on disk but becomes unreadable,
  * which is what makes a shared browser safe between two accounts.
+ *
+ * Unlike remembering, forgetting fails in the dangerous direction: a delete
+ * that silently did not happen leaves the key on the device, and the next
+ * launch would reopen the carnet with no password — the opposite of what the
+ * teacher just asked for. So this one reports, and tries a second way first.
+ *
+ * Returns false only when the key may still be readable.
  */
-export async function forgetDataKey(userId: string): Promise<void> {
-  await runTransaction('readwrite', (store) => store.delete(userId))
+export async function forgetDataKey(userId: string): Promise<boolean> {
+  const removed = await runTransaction('readwrite', (store) => store.delete(userId))
+  // 'unavailable' means there is no database to hold a key, so there is
+  // nothing left behind — the private-window case, where nothing was stored.
+  if (removed.status !== 'failed') return true
+
+  const masked = await runTransaction('readwrite', (store) => store.put(TOMBSTONE, userId))
+  return masked.status === 'done'
 }
