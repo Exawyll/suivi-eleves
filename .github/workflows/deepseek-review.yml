@@ -48,9 +48,10 @@ jobs:
             model: "deepseek-v4-pro",
             temperature: 0.2,
             # A ceiling is what makes the request finish in seconds rather
-            # than expire. It must stay generous: the budget covers the model's
-            # reasoning tokens too, and at 900 the whole of it went there and
-            # the answer came back empty.
+            # than expire. Keep it generous: the budget also covers reasoning
+            # tokens, and at 900 all of it went there and the answer came back
+            # empty. Mind the quoting here too, this comment sits inside the
+            # single-quoted jq program: one apostrophe closes it.
             max_tokens: 4000,
             messages: [
               {role: "system", content: "Tu es un reviewer de code senior. Analyse ce diff de pull request et signale uniquement les bugs réels, failles de sécurité et régressions probables — pas de style ni de formatage. Réponds en français, en liste à puces, une ligne par problème avec le fichier concerné si identifiable. Si tu ne vois rien à signaler, dis-le explicitement en une phrase."},
