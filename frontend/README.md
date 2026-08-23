@@ -157,6 +157,13 @@ changent pas de forme ; ce qui s'ajoute, c'est **ce que l'appareil doit encore a
   synchronisé.** Le serveur détient la version d'avant cette modification.
 - **Une enveloppe qui ne se déchiffre pas ne change rien** — ni le carnet, ni la comptabilité.
   C'est la mauvaise clé, ou une enveloppe déplacée d'un autre enregistrement.
+- **Un genre d'enregistrement inconnu est inerte, jamais fatal.** Un client plus récent sur le même
+  compte peut pousser un genre que cette version n'a nulle part où ranger. Refuser la page entière
+  bloquerait aussi tous les enregistrements connus qui l'accompagnent, définitivement, puisque le
+  même enregistrement revient à la page suivante. Trois couches : le transport (`api/sync.ts`)
+  l'écarte de la réponse, le moteur le lit comme illisible — carnet intact, aucune révision
+  enregistrée — et la table de correspondance (`sync/carnetRecords.ts`) n'a de toute façon rien à
+  faire d'un genre absent de sa table, au lieu de lever sur une liste qui n'existe pas.
 
 ### Estampilles strictement croissantes
 

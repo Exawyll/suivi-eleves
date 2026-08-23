@@ -15,8 +15,29 @@ import type { Id } from '@/types/domain'
  * list is the only structural check it can make — a type it does not know is
  * refused outright, which is why the two lists must stay in step.
  */
-export type SyncEntityType =
-  'etablissement' | 'classe' | 'eleve' | 'tagCategory' | 'tag' | 'event' | 'preference'
+export const SYNC_ENTITY_TYPES = [
+  'etablissement',
+  'classe',
+  'eleve',
+  'tagCategory',
+  'tag',
+  'event',
+  'preference',
+] as const
+
+export type SyncEntityType = (typeof SYNC_ENTITY_TYPES)[number]
+
+/**
+ * Whether a kind read off the wire is one this version of the app knows.
+ *
+ * A kind is a plaintext label chosen by whatever wrote the record, so a newer
+ * client — or a tampered response — can name one that means nothing here. It
+ * has to be recognised at the door: the carnet has no list to put such a
+ * record in, and the code that looks that list up would fail on it.
+ */
+export function isSyncEntityType(value: unknown): value is SyncEntityType {
+  return typeof value === 'string' && (SYNC_ENTITY_TYPES as readonly string[]).includes(value)
+}
 
 /**
  * A carnet holds exactly one preference record — which classe is open, which

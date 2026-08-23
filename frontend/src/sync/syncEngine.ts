@@ -8,7 +8,12 @@ import {
 } from '@/api/sync'
 import { openRecord, sealRecord } from '@/crypto/envelope'
 import { recallDataKey } from '@/crypto/deviceKeyStore'
-import { syncKey, type SyncEntityType, type SyncRecordMeta } from '@/store/syncMeta'
+import {
+  isSyncEntityType,
+  syncKey,
+  type SyncEntityType,
+  type SyncRecordMeta,
+} from '@/store/syncMeta'
 import { useAppStore, type AppState } from '@/store/useAppStore'
 import { useAuthStore } from '@/store/useAuthStore'
 import { applyRecord, readRecord, removeRecord } from '@/sync/carnetRecords'
@@ -41,6 +46,12 @@ interface Decoded {
 async function decode(dek: CryptoKey, envelope: RecordEnvelope): Promise<Decoded> {
   const { entityType, entityId, revision, clientUpdatedAt, deleted } = envelope
   const head = { entityType, entityId, revision, clientUpdatedAt, deleted }
+  // A kind this version has no list for — what a newer client on the same
+  // account writes. Read as unreadable, which is already the right answer: the
+  // carnet is left alone, and no revision is recorded for a record this device
+  // does not hold. The transport drops these before they get here; the engine
+  // does not depend on that to keep its books straight.
+  if (!isSyncEntityType(entityType)) return { ...head, readable: false }
   if (deleted) return { ...head, readable: true }
   if (envelope.ciphertext === null || envelope.nonce === null) return { ...head, readable: false }
 

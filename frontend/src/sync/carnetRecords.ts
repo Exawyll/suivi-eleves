@@ -30,8 +30,18 @@ const COLLECTIONS = {
 type CollectionType = keyof typeof COLLECTIONS
 type CollectionItem = Etablissement | Classe | Eleve | TagCategory | Tag | EventItem
 
-function isCollection(entityType: SyncEntityType): entityType is CollectionType {
-  return entityType !== 'preference'
+/**
+ * The list this kind lives in, or null when it has none.
+ *
+ * Looked up in the table rather than deduced from "anything but the
+ * preference": a kind that is in neither — one a newer client wrote — would
+ * otherwise be read as a collection, index the table to `undefined`, and throw
+ * on the list that name points at. That throw travels up through the pull and
+ * fails the whole round, and it fails every round after it, since the same
+ * record comes back on the next page. Unknown kinds are inert instead.
+ */
+function collectionOf(entityType: SyncEntityType): CollectionType | null {
+  return Object.hasOwn(COLLECTIONS, entityType) ? (entityType as CollectionType) : null
 }
 
 /** What to encrypt for this record, or null if it is not in the carnet. */
@@ -40,14 +50,16 @@ export function readRecord(
   entityType: SyncEntityType,
   entityId: Id,
 ): unknown | null {
-  if (!isCollection(entityType)) {
+  if (entityType === 'preference') {
     return {
       activeClasseId: state.activeClasseId,
       principalClasseId: state.principalClasseId,
       hasSeeded: state.hasSeeded,
     } satisfies PreferenceRecord
   }
-  const items: CollectionItem[] = state[COLLECTIONS[entityType]]
+  const key = collectionOf(entityType)
+  if (key === null) return null
+  const items: CollectionItem[] = state[COLLECTIONS[key]]
   return items.find((item) => item.id === entityId) ?? null
 }
 
@@ -64,7 +76,7 @@ export function applyRecord(
   entityId: Id,
   value: unknown,
 ): Partial<DomainState> {
-  if (!isCollection(entityType)) {
+  if (entityType === 'preference') {
     const preference = value as Partial<PreferenceRecord>
     return {
       activeClasseId: preference.activeClasseId ?? null,
@@ -73,7 +85,9 @@ export function applyRecord(
     }
   }
 
-  const key = COLLECTIONS[entityType]
+  const collection = collectionOf(entityType)
+  if (collection === null) return {}
+  const key = COLLECTIONS[collection]
   const items: CollectionItem[] = state[key]
   const incoming = { ...(value as object), id: entityId } as CollectionItem
   const at = items.findIndex((item) => item.id === entityId)
@@ -89,9 +103,11 @@ export function removeRecord(
   entityId: Id,
 ): Partial<DomainState> {
   // A carnet always has its preference record; there is nothing to delete.
-  if (!isCollection(entityType)) return {}
+  if (entityType === 'preference') return {}
 
-  const key = COLLECTIONS[entityType]
+  const collection = collectionOf(entityType)
+  if (collection === null) return {}
+  const key = COLLECTIONS[collection]
   const items: CollectionItem[] = state[key]
   const patch = { [key]: items.filter((item) => item.id !== entityId) } as Partial<DomainState>
 

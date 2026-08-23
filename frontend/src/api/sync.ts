@@ -1,5 +1,5 @@
 import { ApiError, apiRequest } from '@/api/client'
-import type { SyncEntityType } from '@/store/syncMeta'
+import { isSyncEntityType, type SyncEntityType } from '@/store/syncMeta'
 
 /**
  * The synchronisation endpoints.
@@ -69,7 +69,7 @@ function isEnvelope(value: unknown): value is RecordEnvelope {
     unknown
   >
   return (
-    typeof entityType === 'string' &&
+    isSyncEntityType(entityType) &&
     typeof entityId === 'string' &&
     entityId !== '' &&
     typeof revision === 'number' &&
@@ -82,8 +82,33 @@ function isApplied(value: unknown): value is AppliedRecord {
   if (value === null || typeof value !== 'object') return false
   const { entityType, entityId, revision } = value as Record<string, unknown>
   return (
-    typeof entityType === 'string' && typeof entityId === 'string' && typeof revision === 'number'
+    isSyncEntityType(entityType) && typeof entityId === 'string' && typeof revision === 'number'
   )
+}
+
+/**
+ * Well-formed, but of a kind this version of the app has no list for — what a
+ * newer client on the same account would push.
+ *
+ * Dropped here rather than refused: a record nothing on this device can hold
+ * is not a malformed response, and treating it as one would strand every
+ * record on the same page, permanently, behind a kind that will keep coming
+ * back. The engine then treats what is left exactly as it treats an envelope
+ * it cannot decrypt — the carnet is not touched, and nothing is claimed about
+ * a version this device does not hold.
+ */
+function isForeignKind(value: unknown): boolean {
+  if (value === null || typeof value !== 'object') return false
+  const { entityType } = value as Record<string, unknown>
+  return typeof entityType === 'string' && !isSyncEntityType(entityType)
+}
+
+/** Drops the kinds this version cannot hold, then insists on the rest. */
+function checked<T>(values: unknown[], is: (value: unknown) => value is T): T[] {
+  const kept = values.filter((value) => !isForeignKind(value))
+  const valid = kept.filter(is)
+  if (valid.length !== kept.length) malformed()
+  return valid
 }
 
 function malformed(): never {
@@ -94,18 +119,20 @@ export async function pullChanges(since: number, limit = PULL_PAGE_SIZE): Promis
   const body = await apiRequest<unknown>(`/sync/changes?since=${since}&limit=${limit}`)
   if (body === null || typeof body !== 'object') malformed()
   const { records, nextCursor, hasMore } = body as Record<string, unknown>
-  if (!Array.isArray(records) || !records.every(isEnvelope)) malformed()
+  if (!Array.isArray(records)) malformed()
+  const page = checked(records, isEnvelope)
   if (typeof nextCursor !== 'number' || typeof hasMore !== 'boolean') malformed()
-  return { records, nextCursor, hasMore }
+  // The cursor still moves past the dropped ones: it is the server's, and
+  // holding it back would re-read the same page for as long as they exist.
+  return { records: page, nextCursor, hasMore }
 }
 
 export async function pushChanges(records: PushRecord[]): Promise<PushResponse> {
   const body = await apiRequest<unknown>('/sync/changes', { method: 'POST', body: { records } })
   if (body === null || typeof body !== 'object') malformed()
   const { applied, conflicts } = body as Record<string, unknown>
-  if (!Array.isArray(applied) || !applied.every(isApplied)) malformed()
-  if (!Array.isArray(conflicts) || !conflicts.every(isEnvelope)) malformed()
-  return { applied, conflicts }
+  if (!Array.isArray(applied) || !Array.isArray(conflicts)) malformed()
+  return { applied: checked(applied, isApplied), conflicts: checked(conflicts, isEnvelope) }
 }
 
 export function fetchSyncStatus(): Promise<SyncStatus> {

@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { PullResponse, PushRecord, PushResponse, RecordEnvelope } from '@/api/sync'
+import type { SyncEntityType } from '@/store/syncMeta'
 
 /**
  * The engine is driven through mocked endpoints and a real key: what is worth
@@ -175,6 +176,45 @@ describe('pull', () => {
       revision: 8,
       dirty: true,
     })
+  })
+
+  it('ignore un genre d’enregistrement inconnu sans perdre le reste de la page', async () => {
+    // Ce qu'un client plus récent pousserait sur le même compte. Le carnet n'a
+    // aucune liste où le ranger ; ce qui compte est que la page passe quand
+    // même, et que le curseur avance — sinon la même page revient sans fin.
+    const foreign = 'devoir' as SyncEntityType
+    const sealed = await sealRecord(dekHolder.key as CryptoKey, foreign, 'd1', { titre: 'Poésie' })
+    const known = await anEnvelope(
+      'tag',
+      't2',
+      { categoryId: 'k1', emoji: '🎯', name: 'Effort', variant: 'outline' },
+      11,
+      '2026-03-01T10:00:00.000Z',
+    )
+    pullChanges.mockResolvedValueOnce({
+      records: [
+        {
+          entityType: foreign,
+          entityId: 'd1',
+          revision: 10,
+          clientUpdatedAt: '2026-03-01T09:00:00.000Z',
+          deleted: false,
+          ...sealed,
+        },
+        known,
+      ],
+      nextCursor: 11,
+      hasMore: false,
+    })
+
+    await requestSync()
+
+    const state = useAppStore.getState()
+    expect(state.tags.find((tag) => tag.id === 't2')?.name).toBe('Effort')
+    expect(state.cursor).toBe(11)
+    // Rien n'est prétendu sur une version que cet appareil ne sait pas tenir.
+    expect(state.syncMeta[syncKey(foreign, 'd1')]).toBeUndefined()
+    expect(useSyncStore.getState().phase).toBe('idle')
   })
 
   it('laisse le carnet intact quand une enveloppe ne se déchiffre pas', async () => {
