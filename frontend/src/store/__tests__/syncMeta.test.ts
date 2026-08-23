@@ -81,6 +81,18 @@ describe('mutations sans effet', () => {
     expect(dirtyKeys(store.getState().syncMeta)).toEqual([])
   })
 
+  it('ne doit rien devoir au serveur quand la classe ouverte est déjà celle-là', () => {
+    const store = freshStore()
+    const openId = store.getState().activeClasseId ?? ''
+    store.setState({ syncMeta: {} })
+
+    store.getState().setActiveClasse(openId)
+
+    // Un push identique à ce que le serveur détient, mais horodaté plus tard :
+    // assez pour écraser l'épinglage qu'un autre appareil vient de faire.
+    expect(dirtyKeys(store.getState().syncMeta)).toEqual([])
+  })
+
   it('ne doit rien devoir au serveur quand le nom de catégorie est inchangé', () => {
     const store = freshStore()
     const category = store.getState().tagCategories[0]

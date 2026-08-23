@@ -58,6 +58,29 @@ describe('pullChanges', () => {
     await expect(pullChanges(0)).rejects.toBeInstanceOf(ApiError)
   })
 
+  it('refuse un curseur qui n’est pas un entier', async () => {
+    // `JSON.parse('1e999')` rend `Infinity`. Un curseur pareil est persisté,
+    // renvoyé en `?since=Infinity`, refusé — et l'appareil ne redemande plus
+    // jamais rien.
+    apiRequest.mockResolvedValueOnce({
+      records: [],
+      nextCursor: Number.POSITIVE_INFINITY,
+      hasMore: false,
+    })
+
+    await expect(pullChanges(0)).rejects.toBeInstanceOf(ApiError)
+  })
+
+  it('refuse une révision qui n’est pas un entier', async () => {
+    apiRequest.mockResolvedValueOnce({
+      records: [{ ...TAG, revision: Number.POSITIVE_INFINITY }],
+      nextCursor: 5,
+      hasMore: false,
+    })
+
+    await expect(pullChanges(0)).rejects.toBeInstanceOf(ApiError)
+  })
+
   it('refuse une réponse qui n’a pas la forme d’une page', async () => {
     apiRequest.mockResolvedValueOnce({ records: [TAG], nextCursor: null, hasMore: false })
 

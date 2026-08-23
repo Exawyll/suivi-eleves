@@ -493,7 +493,15 @@ describe('quand il ne faut pas synchroniser', () => {
 
 describe('préférence', () => {
   it('synchronise la classe ouverte comme un enregistrement à part entière', async () => {
-    useAppStore.getState().setActiveClasse('c1')
+    // `c1` est déjà la classe ouverte, et la rouvrir ne doit rien devoir :
+    // c'est l'ouverture d'une autre qui estampille la préférence.
+    useAppStore.setState({
+      classes: [
+        ...useAppStore.getState().classes,
+        { id: 'c2', etablissementId: 'e1', name: 'CM1 B', niveau: 'CM1' },
+      ],
+    })
+    useAppStore.getState().setActiveClasse('c2')
     pushChanges.mockImplementationOnce(async (records) => ({
       applied: records.map((record) => ({
         entityType: record.entityType,

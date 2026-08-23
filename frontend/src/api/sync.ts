@@ -61,6 +61,11 @@ export interface SyncStatus {
  * writes: an envelope read as a tombstone deletes a record, and a cursor read
  * as a number decides which records this device will never ask for again. A
  * malformed body has to fail loudly, before any of that.
+ *
+ * Revisions and cursors are checked as whole numbers rather than as numbers.
+ * `JSON.parse` turns `1e999` into `Infinity`, and a cursor of `Infinity` is
+ * persisted, sent back as `?since=Infinity`, refused, and asks for nothing
+ * ever again — a device stuck for good on a value it accepted once.
  */
 function isEnvelope(value: unknown): value is RecordEnvelope {
   if (value === null || typeof value !== 'object') return false
@@ -72,7 +77,7 @@ function isEnvelope(value: unknown): value is RecordEnvelope {
     isSyncEntityType(entityType) &&
     typeof entityId === 'string' &&
     entityId !== '' &&
-    typeof revision === 'number' &&
+    Number.isInteger(revision) &&
     typeof clientUpdatedAt === 'string' &&
     typeof deleted === 'boolean'
   )
@@ -81,9 +86,7 @@ function isEnvelope(value: unknown): value is RecordEnvelope {
 function isApplied(value: unknown): value is AppliedRecord {
   if (value === null || typeof value !== 'object') return false
   const { entityType, entityId, revision } = value as Record<string, unknown>
-  return (
-    isSyncEntityType(entityType) && typeof entityId === 'string' && typeof revision === 'number'
-  )
+  return isSyncEntityType(entityType) && typeof entityId === 'string' && Number.isInteger(revision)
 }
 
 /**
@@ -121,7 +124,8 @@ export async function pullChanges(since: number, limit = PULL_PAGE_SIZE): Promis
   const { records, nextCursor, hasMore } = body as Record<string, unknown>
   if (!Array.isArray(records)) malformed()
   const page = checked(records, isEnvelope)
-  if (typeof nextCursor !== 'number' || typeof hasMore !== 'boolean') malformed()
+  if (typeof nextCursor !== 'number' || !Number.isInteger(nextCursor)) malformed()
+  if (typeof hasMore !== 'boolean') malformed()
   // The cursor still moves past the dropped ones: it is the server's, and
   // holding it back would re-read the same page for as long as they exist.
   return { records: page, nextCursor, hasMore }

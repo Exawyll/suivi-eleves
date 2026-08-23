@@ -419,7 +419,11 @@ export function createAppStore(
 
         setActiveClasse: (id) => {
           set((state) =>
-            state.classes.some((c) => c.id === id)
+            // Reopening the classe that is already open changes nothing, and
+            // must not stamp the preference: it would owe the server a record
+            // identical to the one it holds, and that push carries a newer
+            // timestamp — enough to outrank a pin another device just made.
+            state.activeClasseId !== id && state.classes.some((c) => c.id === id)
               ? { activeClasseId: id, ...touch(state, ['preference', PREFERENCE_ID]) }
               : {},
           )
