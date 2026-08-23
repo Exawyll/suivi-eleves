@@ -150,9 +150,13 @@ changent pas de forme ; ce qui s'ajoute, c'est **ce que l'appareil doit encore a
 - **Un push ne fait jamais avancer le curseur.** Le serveur n'en renvoie volontairement aucun, et
   reprendre la révision qu'il vient d'attribuer ferait sauter tous les enregistrements qu'un autre
   appareil a poussés et que celui-ci n'a jamais vus.
-- **Une modification locale plus récente survit au pull** et reste due — tout en prenant la
-  révision du serveur, ce qui fait du prochain push un écrasement direct plutôt qu'un conflit
-  qu'il gagnerait de toute façon.
+- **Une modification locale au moins aussi récente survit au pull** et reste due — tout en prenant
+  la révision du serveur, ce qui fait du prochain push un écrasement direct plutôt qu'un conflit
+  qu'il gagnerait de toute façon. À égalité d'horodatage, c'est le local qui reste :
+  `nextStamp()` ordonne les écritures d'un appareil, rien n'ordonne les horloges de deux, donc
+  une égalité est un autre appareil qui a écrit dans la même milliseconde — pas une version déjà
+  vue ici. Céder perdrait sans trace une saisie jamais envoyée ; garder coûte un push de plus, et
+  la paire converge quand même.
 - **Un enregistrement re-touché pendant que son push était en vol n'est jamais marqué
   synchronisé.** Le serveur détient la version d'avant cette modification.
 - **Une enveloppe qui ne se déchiffre pas ne change rien** — ni le carnet, ni la comptabilité.

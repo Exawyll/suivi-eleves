@@ -93,11 +93,19 @@ function applyDecoded(decoded: Decoded[], cursor: number | null): void {
       // to hold a version it could not read.
       if (!record.readable) continue
 
-      // A local change newer than the server's stays, and stays owed. The
-      // revision is taken all the same: it is what the next push sends as
-      // `baseRevision`, and with it the server accepts the overwrite outright
-      // instead of arbitrating a conflict it would lose anyway.
-      if (local?.dirty === true && local.updatedAt > record.clientUpdatedAt) {
+      // A local change at least as recent as the server's stays, and stays
+      // owed. The revision is taken all the same: it is what the next push
+      // sends as `baseRevision`, and with it the server accepts the overwrite
+      // outright instead of arbitrating a conflict it would lose anyway.
+      //
+      // Equal stamps go to the local side. `nextStamp()` orders this device's
+      // writes, nothing orders two devices' clocks, so a tie is two teachers
+      // writing inside the same millisecond and not a record this device has
+      // already seen. Losing it would drop a change that was never sent —
+      // silently, and for good. Keeping it costs one more push, and the pair
+      // still converges: whichever push lands last is what both devices read
+      // back, and neither is dirty by then.
+      if (local?.dirty === true && local.updatedAt >= record.clientUpdatedAt) {
         syncMeta[key] = { ...local, revision: record.revision }
         continue
       }

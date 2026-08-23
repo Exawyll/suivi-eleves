@@ -178,6 +178,37 @@ describe('pull', () => {
     })
   })
 
+  it('garde la version locale quand les deux horodatages sont identiques', async () => {
+    // `nextStamp()` ordonne les écritures de cet appareil, rien n'ordonne les
+    // horloges de deux appareils. Une égalité est donc un autre appareil qui a
+    // écrit dans la même milliseconde, pas une version déjà vue ici : céder la
+    // perdrait sans trace, puisqu'elle n'a jamais été envoyée.
+    const sameInstant = '2026-03-02T00:00:00.000Z'
+    useAppStore.setState({
+      syncMeta: {
+        [syncKey('tag', 't1')]: { updatedAt: sameInstant, revision: 3, dirty: true },
+      },
+    })
+    const other = await anEnvelope(
+      'tag',
+      't1',
+      { categoryId: 'k1', emoji: '👏', name: 'Nom de l’autre appareil', variant: 'accent' },
+      9,
+      sameInstant,
+    )
+    pullChanges.mockResolvedValueOnce({ records: [other], nextCursor: 9, hasMore: false })
+
+    await requestSync()
+
+    const state = useAppStore.getState()
+    expect(state.tags.find((tag) => tag.id === 't1')?.name).toBe('Participation')
+    expect(state.syncMeta[syncKey('tag', 't1')]).toEqual({
+      updatedAt: sameInstant,
+      revision: 9,
+      dirty: true,
+    })
+  })
+
   it('ignore un genre d’enregistrement inconnu sans perdre le reste de la page', async () => {
     // Ce qu'un client plus récent pousserait sur le même compte. Le carnet n'a
     // aucune liste où le ranger ; ce qui compte est que la page passe quand
