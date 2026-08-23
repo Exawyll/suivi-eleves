@@ -1,0 +1,27 @@
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-sunk);
+  margin-bottom: 12px;
+}
+
+.title {
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.state {
+  font-size: 12px;
+  font-weight: 700;
+  text-align: right;
+  color: var(--color-text-60);
+}
+
+/* Only a real failure is coloured. Offline is an ordinary state here. */
+.state[data-phase='error'] {
+  color: var(--color-danger);
+}

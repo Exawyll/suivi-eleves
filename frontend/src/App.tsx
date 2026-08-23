@@ -14,6 +14,7 @@ import { SettingsPage } from '@/pages/SettingsPage'
 import { TagsPage } from '@/pages/TagsPage'
 import { AuthPage } from '@/pages/AuthPage'
 import { useAuthStore } from '@/store/useAuthStore'
+import { startSyncTriggers } from '@/sync/syncTriggers'
 import styles from './App.module.css'
 
 function AppShell() {
@@ -40,6 +41,14 @@ export default function App() {
   useEffect(() => {
     void restore()
   }, [restore])
+
+  // Tied to the unlocked carnet, and torn down with it: a listener outliving
+  // the account it belongs to would push one teacher's carnet under whoever
+  // signed in next.
+  useEffect(() => {
+    if (status !== 'unlocked') return
+    return startSyncTriggers()
+  }, [status])
 
   // Nothing is rendered while the vault is being opened. The carnet store is
   // empty until then, so showing the shell first would flash an empty app —
