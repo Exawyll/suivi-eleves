@@ -2,10 +2,7 @@ name: CI
 
 on:
   pull_request:
-    # The v2 accounts work stacks on an integration branch that is deliberately
-    # not merged to main until it has been validated; without it listed here,
-    # every pull request in that stack would run with no checks at all.
-    branches: [main, feature/carnet-v2-comptes]
+    branches: [main]
   push:
     branches: [main]
 

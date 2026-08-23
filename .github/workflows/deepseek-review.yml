@@ -2,10 +2,7 @@ name: DeepSeek Review
 
 on:
   pull_request:
-    # Same reason as ci.yml: the v2 accounts work stacks on an integration
-    # branch, and a review that only runs on pull requests to main would skip
-    # every one of them.
-    branches: [main, feature/carnet-v2-comptes]
+    branches: [main]
 
 permissions:
   contents: read
