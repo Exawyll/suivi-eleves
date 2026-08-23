@@ -1,0 +1,155 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+  box-sizing: border-box;
+  padding: 70px 26px calc(24px + env(safe-area-inset-bottom));
+  background: var(--color-bg);
+}
+
+.header {
+  text-align: center;
+  margin-bottom: 28px;
+}
+
+.wordmark {
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 36px;
+  color: var(--color-text);
+}
+
+.tagline {
+  font-size: 13px;
+  color: var(--color-text-60);
+  margin-top: 4px;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+}
+
+.row {
+  display: flex;
+  gap: 10px;
+}
+
+.field {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 14px;
+}
+
+.label {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--color-text-60);
+  margin-bottom: 6px;
+}
+
+.input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 11px 14px;
+  border: var(--border-ink);
+  border-radius: 14px;
+  font-family: var(--font-body);
+  font-size: 14px;
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+  color: var(--color-text);
+}
+
+.error {
+  font-size: 12px;
+  color: var(--color-danger);
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+
+.submit {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 13px 22px;
+  border-radius: 14px;
+  border: var(--border-ink);
+  color: var(--color-text);
+  font-family: var(--font-body);
+  font-weight: 800;
+  font-size: 14px;
+  cursor: pointer;
+  margin-top: 8px;
+}
+
+.submit:disabled {
+  opacity: 0.55;
+  cursor: progress;
+}
+
+.submitLogin {
+  background: var(--color-primary);
+}
+
+.submitSignup {
+  background: var(--color-confirm);
+}
+
+.switch {
+  text-align: center;
+  margin-top: 20px;
+  font-size: 13px;
+  color: var(--color-text-70);
+}
+
+.switchAction {
+  color: var(--color-link);
+  font-weight: 800;
+  cursor: pointer;
+  background: none;
+  border: none;
+  font-family: inherit;
+  font-size: inherit;
+  padding: 0;
+}
+
+/* The one thing a teacher must read before choosing a password. */
+.warning {
+  margin-top: 16px;
+  padding: 10px 12px;
+  border: var(--border-sand);
+  border-radius: 12px;
+  background: var(--color-highlight);
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--color-text-70);
+}
+
+.warningTitle {
+  font-weight: 800;
+  color: var(--color-text);
+}
+
+.adopting {
+  margin-bottom: 14px;
+  padding: 10px 12px;
+  border: var(--border-sand);
+  border-radius: 12px;
+  background: var(--color-surface);
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--color-text-70);
+}
+
+.locked {
+  margin-bottom: 14px;
+  font-size: 13px;
+  color: var(--color-text-70);
+  text-align: center;
+}
+
+.lockedEmail {
+  font-weight: 800;
+  color: var(--color-text);
+}

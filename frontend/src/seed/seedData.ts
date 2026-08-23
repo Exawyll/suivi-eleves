@@ -159,5 +159,3 @@ export const SEED_EVENTS: EventItem[] = [
     createdAt: '2026-02-28T09:00:00.000Z',
   },
 ]
-
-export const TEACHER_DISPLAY_NAME = 'Mme Roy'

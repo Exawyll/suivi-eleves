@@ -5,6 +5,7 @@ reads `Base.metadata`, which is only populated by the classes actually imported.
 """
 
 from app.models.base import Base, TimestampMixin
+from app.models.sync_record import SyncRecord
 from app.models.user import RefreshToken, User
 
-__all__ = ["Base", "RefreshToken", "TimestampMixin", "User"]
+__all__ = ["Base", "RefreshToken", "SyncRecord", "TimestampMixin", "User"]

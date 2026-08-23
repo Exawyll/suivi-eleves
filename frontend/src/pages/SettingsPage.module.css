@@ -36,3 +36,49 @@
   color: var(--color-text-55);
   margin-top: 2px;
 }
+
+.account {
+  border: var(--border-ink);
+  border-radius: 16px;
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+  padding: 14px 16px;
+  margin-bottom: 16px;
+}
+
+.accountName {
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 22px;
+  color: var(--color-text);
+}
+
+.accountEmail {
+  font-size: 13px;
+  color: var(--color-text-60);
+  margin-top: 2px;
+}
+
+.logout {
+  margin-top: 12px;
+  padding: 9px 16px;
+  border: var(--border-ink);
+  border-radius: 12px;
+  background: var(--color-surface-sunk);
+  font-family: var(--font-body);
+  font-weight: 800;
+  font-size: 13px;
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+.accountNotice {
+  margin-top: 8px;
+  padding: 8px 10px;
+  border: var(--border-sand);
+  border-radius: 10px;
+  background: var(--color-highlight);
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--color-text-70);
+}
