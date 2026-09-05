@@ -36,8 +36,38 @@ Le serveur conserve les paramètres de dérivation et le `wrappedDek` pour qu'un
 nouvel appareil puisse se déverrouiller avec le seul mot de passe — sans que
 cela lui donne le moindre moyen de lire un carnet.
 
-**Conséquence assumée : un mot de passe perdu = des données perdues.** Il n'y a
-pas de réinitialisation possible, et c'est le prix du chiffrement bout-en-bout.
+**Conséquence assumée : sans mot de passe ni clé de récupération, les données
+sont perdues.** C'est le prix du chiffrement bout-en-bout — le serveur ne peut
+jamais réinitialiser un accès dont il ne détient aucune des deux clés.
+
+### Clé de récupération
+
+Un second secret, généré côté client et affiché **une seule fois**, wrappe le
+même DEK sous une clé dérivée par HKDF (pas de PBKDF2 : la clé a déjà 256 bits
+d'entropie, rien à ralentir). Le serveur stocke ce second enveloppe
+(`wrapped_dek_recovery`/`dek_nonce_recovery`) et le hash argon2id du secret
+(`recovery_auth_hash`) — jamais la clé elle-même.
+
+C'est délibérément **la seule alternative à un lien de réinitialisation par
+email** : un tel lien supposerait que le serveur puisse rendre le carnet
+accessible sans le mot de passe, donc sans jamais avoir eu besoin de le
+connaître — exactement ce que le chiffrement bout-en-bout interdit.
+
+- `POST /auth/recovery/setup` (authentifié) crée ou remplace la clé — il faut
+  déjà avoir déverrouillé le DEK, donc reposer sur `CurrentUser` plutôt que sur
+  un nouvel échange de mot de passe.
+- `POST /auth/recovery/start` (public, throttlé) échange le secret contre
+  l'enveloppe chiffrée, pour que le client déballe le DEK localement avant de
+  demander un nouveau mot de passe.
+- `POST /auth/recovery/complete` (public, throttlé) revérifie le secret,
+  remplace le mot de passe **et** fait tourner la clé de récupération en un
+  seul appel, puis révoque toutes les sessions ouvertes.
+- Pas de table de jetons dédiée : chaque appel public revérifie
+  indépendamment `recovery_auth_hash`, avec le même sel factice qu'à la
+  connexion pour rester indistinguable d'une adresse ou d'une clé inconnue.
+- Les compteurs de throttle sont **namespacés par action** (`login:` /
+  `recovery:`) : rater sa clé de récupération ne doit pas verrouiller le mot
+  de passe du même coup, et inversement.
 
 ### Détails qui comptent
 
