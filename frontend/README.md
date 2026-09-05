@@ -161,12 +161,46 @@ serveur. Ce qui la rend praticable, c'est un mot de passe faible. Le vrai correc
 protocole à mot de passe augmenté (OPAQUE, SRP), qui ne transmet aucun dérivé du mot de passe :
 hors périmètre, et un changement d'architecture, pas un correctif.
 
-Corollaire assumé : **le minimum de 6 caractères vient de la maquette et reste bas** pour une clé
-sans récupération possible. C'est un arbitrage produit, pas un oubli.
+Corollaire assumé : **le minimum de 6 caractères vient de la maquette et reste bas.** La clé de
+récupération (voir plus bas) protège contre l'oubli, pas contre un serveur compromis qui attaque le
+mot de passe hors-ligne — les deux wrappings du DEK sont indépendants, donc un mot de passe faible
+reste un mot de passe faible même une fois une clé de récupération configurée.
 
 Le nombre d'itérations renvoyé par le serveur est en revanche **refusé s'il est inférieur au
 minimum** (`assertUsableKdfParams`) : sans ce garde-fou, un serveur répondant `1` obtiendrait un
 `authSecret` dérivé en microsecondes, assez bon marché pour remonter au mot de passe.
+
+### Clé de récupération
+
+Le mot de passe seul suffisait tant qu'on acceptait qu'un mot de passe perdu soit un carnet perdu.
+La clé de récupération (`src/crypto/recoveryKey.ts`, `src/crypto/kdf.ts:deriveRecoveryCredentials`)
+retire ce risque sans toucher au reste du schéma : 32 octets aléatoires, encodés en base32 groupé
+(alphabet RFC 4648 sans `0`/`O`/`1`/`I`/`l`, pensé pour être noté à la main plutôt que retapé de
+mémoire), qui wrappent le même DEK sous une seconde clé dérivée par HKDF — pas de PBKDF2, l'entropie
+est déjà là.
+
+Pourquoi pas un lien de réinitialisation par email comme la plupart des apps ? Parce qu'un tel lien
+suppose que le serveur puisse redonner accès au carnet sans le mot de passe — donc qu'il puisse le
+faire aussi de lui-même. C'est exactement ce que le chiffrement bout-en-bout interdit ; la clé de
+récupération est l'équivalent qui ne demande cette confiance à personne (même mécanisme que la
+phrase de récupération de Proton Mail ou l'export chiffré de Bitwarden).
+
+- **À l'inscription**, la clé est générée pendant que le DEK fraîchement créé est encore
+  extractible — le seul moment où ça ne coûte pas de redemander le mot de passe. `useAuthStore.signup`
+  l'envoie au serveur en best-effort une fois le compte créé : un échec n'empêche pas de continuer,
+  et se logue plutôt que de disparaître en silence (une vraie panne y est passée inaperçue une fois).
+- **Depuis Réglages**, `setupRecovery` (re)génère une clé en redérivant la KEK à partir du mot de
+  passe actuel — nécessaire puisque l'appareil ne garde jamais qu'une copie non extractible du DEK.
+- **« Mot de passe oublié »** (`RecoverForm`) est un flux à deux appels : `startRecovery` échange la
+  clé contre le DEK chiffré et le déballe localement ; `completeRecovery` choisit le nouveau mot de
+  passe, re-chiffre le DEK sous ce mot de passe **et** sous une clé de récupération neuve — celle qui
+  vient de servir ne fonctionne plus ensuite.
+- **`RecoveryKeyReveal`** est monté une seule fois, dans `AppShell`, et regardé via
+  `pendingRecoveryKey` : sign-up, régénération et récupération réussie y aboutissent tous une fois le
+  carnet déjà déverrouillé, donc un seul composant suffit à l'afficher.
+- Disponible aussi depuis l'écran **`locked`** (déverrouillage hors-ligne) : ce n'est pas parce que
+  l'appareil a un carnet local qu'il est hors réseau, et c'est justement là qu'un mot de passe
+  oublié se découvre.
 
 ### Reprise du carnet d'avant les comptes
 

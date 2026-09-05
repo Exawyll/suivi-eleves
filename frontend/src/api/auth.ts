@@ -7,6 +7,7 @@ export interface ApiUser {
   email: string
   firstName: string
   lastName: string
+  recoveryEnabled: boolean
 }
 
 export interface ApiCryptoMaterial {
@@ -102,4 +103,53 @@ export function logoutRequest(refreshToken: string): Promise<void> {
     body: { refreshToken },
     anonymous: true,
   })
+}
+
+export interface ApiRecoveryMaterial {
+  wrappedDekRecovery: string
+  dekNonceRecovery: string
+}
+
+export interface SetupRecoveryPayload {
+  recoveryAuthSecret: string
+  wrappedDekRecovery: string
+  dekNonceRecovery: string
+}
+
+/** Requires a session — the bearer is attached the same way every other
+ * authenticated call gets one, via `apiRequest`'s own hooks. */
+export function setupRecoveryRequest(payload: SetupRecoveryPayload): Promise<void> {
+  return apiRequest<void>('/auth/recovery/setup', { method: 'POST', body: payload })
+}
+
+export function startRecoveryRequest(
+  email: string,
+  recoveryAuthSecret: string,
+): Promise<ApiRecoveryMaterial> {
+  return apiRequest<ApiRecoveryMaterial>('/auth/recovery/start', {
+    method: 'POST',
+    body: { email, recoveryAuthSecret },
+    anonymous: true,
+  })
+}
+
+export interface CompleteRecoveryPayload {
+  email: string
+  recoveryAuthSecret: string
+  newAuthSecret: string
+  newRecoveryAuthSecret: string
+  newWrappedDekRecovery: string
+  newDekNonceRecovery: string
+}
+
+export async function completeRecoveryRequest(
+  payload: CompleteRecoveryPayload & ApiCryptoMaterial,
+): Promise<ApiSession> {
+  return asSession(
+    await apiRequest<unknown>('/auth/recovery/complete', {
+      method: 'POST',
+      body: payload,
+      anonymous: true,
+    }),
+  )
 }

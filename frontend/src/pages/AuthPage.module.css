@@ -69,6 +69,11 @@
   margin-bottom: 10px;
 }
 
+.forgotPassword {
+  text-align: right;
+  margin: -6px 0 14px;
+}
+
 .submit {
   width: 100%;
   box-sizing: border-box;

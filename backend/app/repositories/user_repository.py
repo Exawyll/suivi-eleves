@@ -67,6 +67,19 @@ class UserRepository:
         user.dek_nonce = dek_nonce
         await self.db.flush()
 
+    async def set_recovery_material(
+        self,
+        user: User,
+        *,
+        recovery_auth_hash: str,
+        wrapped_dek_recovery: bytes,
+        dek_nonce_recovery: bytes,
+    ) -> None:
+        user.recovery_auth_hash = recovery_auth_hash
+        user.wrapped_dek_recovery = wrapped_dek_recovery
+        user.dek_nonce_recovery = dek_nonce_recovery
+        await self.db.flush()
+
     async def delete(self, user: User) -> None:
         """Removes the account; the refresh tokens and, once it exists, every
         synchronised record follow through their ON DELETE CASCADE."""

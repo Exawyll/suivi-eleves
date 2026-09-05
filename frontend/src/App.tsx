@@ -6,6 +6,7 @@ import { useFabContext } from '@/hooks/useFabContext'
 import { useUiStore } from '@/store/useUiStore'
 import { QuickEntrySheet } from '@/components/quickEntry/QuickEntrySheet'
 import { TagEditorSheet } from '@/components/tagEditor/TagEditorSheet'
+import { RecoveryKeyReveal } from '@/components/auth/RecoveryKeyReveal'
 import { DashboardPage } from '@/pages/DashboardPage'
 import { ClassesPage } from '@/pages/ClassesPage'
 import { DossierPage } from '@/pages/DossierPage'
@@ -30,6 +31,7 @@ function AppShell() {
       <BottomTabBar />
       <QuickEntrySheet />
       <TagEditorSheet />
+      <RecoveryKeyReveal />
     </div>
   )
 }

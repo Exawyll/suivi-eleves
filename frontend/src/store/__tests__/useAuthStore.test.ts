@@ -21,6 +21,7 @@ const SESSION = {
   email: 'camille@ecole.fr',
   firstName: 'Camille',
   lastName: 'Roy',
+  recoveryEnabled: false,
   kdfSalt: 'c2Vs',
   kdfIterations: 600000,
   wrappedDek: 'd3JhcA==',

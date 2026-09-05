@@ -35,6 +35,7 @@ class UserResponse(CarnetSchema):
     email: str
     first_name: str
     last_name: str
+    recovery_enabled: bool
 
 
 class CryptoMaterial(CarnetSchema):
@@ -95,3 +96,48 @@ class ChangePasswordRequest(CarnetSchema):
     kdf_iterations: KdfIterations
     wrapped_dek: WrappedDek
     dek_nonce: DekNonce
+
+
+class RecoveryMaterial(CarnetSchema):
+    """What a device holding the recovery key needs to unwrap the carnet."""
+
+    wrapped_dek_recovery: Base64Out
+    dek_nonce_recovery: Base64Out
+
+
+class SetupRecoveryRequest(CarnetSchema):
+    """Creates or replaces the recovery key. Requires a valid session, because
+    re-wrapping the DEK for recovery needs it unwrapped first — exactly what
+    being logged in already proves."""
+
+    recovery_auth_secret: AuthSecret
+    wrapped_dek_recovery: WrappedDek
+    dek_nonce_recovery: DekNonce
+
+
+class StartRecoveryRequest(EmailCarrier):
+    """First step of a password-forgotten flow: trades the recovery secret for
+    the wrapped DEK, so the client can unwrap it before asking for a new
+    password."""
+
+    recovery_auth_secret: AuthSecret
+
+
+class CompleteRecoveryRequest(EmailCarrier):
+    """Second step. `recovery_auth_secret` is re-verified here rather than
+    trusted from the first call — there is no session yet to carry that proof
+    across two requests, so each one stands on its own.
+
+    Replaces the password *and* rotates the recovery key: the one just used
+    is spent, exactly like a refresh token is on rotation.
+    """
+
+    recovery_auth_secret: AuthSecret
+    new_auth_secret: AuthSecret
+    kdf_salt: KdfSalt
+    kdf_iterations: KdfIterations
+    wrapped_dek: WrappedDek
+    dek_nonce: DekNonce
+    new_recovery_auth_secret: AuthSecret
+    new_wrapped_dek_recovery: WrappedDek
+    new_dek_nonce_recovery: DekNonce

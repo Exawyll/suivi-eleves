@@ -19,7 +19,15 @@ from app.core.throttle import AttemptThrottle, login_throttle
 from app.models.user import User
 from app.repositories.refresh_token_repository import RefreshTokenRepository
 from app.repositories.user_repository import UserRepository
-from app.schemas.auth import ChangePasswordRequest, LoginRequest, SignupRequest
+from app.schemas.auth import (
+    ChangePasswordRequest,
+    CompleteRecoveryRequest,
+    LoginRequest,
+    RecoveryMaterial,
+    SetupRecoveryRequest,
+    SignupRequest,
+    StartRecoveryRequest,
+)
 
 DEFAULT_KDF_ITERATIONS = 600_000
 
@@ -143,6 +151,84 @@ class AuthService:
     async def delete_account(self, user: User) -> None:
         await self.users.delete(user)
 
+    async def setup_recovery(self, user: User, data: SetupRecoveryRequest) -> None:
+        await self.users.set_recovery_material(
+            user,
+            recovery_auth_hash=hash_auth_secret(data.recovery_auth_secret),
+            wrapped_dek_recovery=data.wrapped_dek_recovery,
+            dek_nonce_recovery=data.dek_nonce_recovery,
+        )
+
+    async def start_recovery(
+        self, data: StartRecoveryRequest, *, client_ip: str
+    ) -> RecoveryMaterial:
+        keys = self._throttle_keys(data.email, client_ip, action="recovery")
+        for key in keys:
+            self.throttle.check(key)
+
+        user = await self._verify_recovery_secret(data.email, data.recovery_auth_secret, keys)
+        # `_verify_recovery_secret` only returns once `recovery_auth_hash` is
+        # set, and `set_recovery_material` always writes these three together.
+        assert user.wrapped_dek_recovery is not None
+        assert user.dek_nonce_recovery is not None
+        return RecoveryMaterial(
+            wrapped_dek_recovery=user.wrapped_dek_recovery,
+            dek_nonce_recovery=user.dek_nonce_recovery,
+        )
+
+    async def complete_recovery(
+        self, data: CompleteRecoveryRequest, *, client_ip: str
+    ) -> IssuedSession:
+        keys = self._throttle_keys(data.email, client_ip, action="recovery")
+        for key in keys:
+            self.throttle.check(key)
+
+        # Re-verified rather than trusted from `start_recovery`: nothing ties
+        # the two calls together, so each has to stand on its own proof.
+        user = await self._verify_recovery_secret(data.email, data.recovery_auth_secret, keys)
+
+        await self.users.replace_crypto_material(
+            user,
+            auth_hash=hash_auth_secret(data.new_auth_secret),
+            kdf_salt=data.kdf_salt,
+            kdf_iterations=data.kdf_iterations,
+            wrapped_dek=data.wrapped_dek,
+            dek_nonce=data.dek_nonce,
+        )
+        # The recovery key that was just spent must not still work afterwards.
+        await self.users.set_recovery_material(
+            user,
+            recovery_auth_hash=hash_auth_secret(data.new_recovery_auth_secret),
+            wrapped_dek_recovery=data.new_wrapped_dek_recovery,
+            dek_nonce_recovery=data.new_dek_nonce_recovery,
+        )
+        await self.tokens.revoke_all_for_user(user.id)
+        return await self._issue_session(user)
+
+    async def _verify_recovery_secret(
+        self, email: str, recovery_auth_secret: str, throttle_keys: tuple[str, str]
+    ) -> User:
+        """Common gate for both recovery steps.
+
+        Checked against the decoy hash whenever there is nothing real to check
+        against — unknown email or no recovery key configured — so neither
+        shows up as a different failure from a wrong secret.
+        """
+        user = await self.users.get_by_email(email)
+        stored_hash = _TIMING_DECOY_HASH
+        if user is not None and user.recovery_auth_hash is not None:
+            stored_hash = user.recovery_auth_hash
+        secret_ok = verify_auth_secret(recovery_auth_secret, stored_hash)
+
+        if user is None or user.recovery_auth_hash is None or not secret_ok:
+            for key in throttle_keys:
+                self.throttle.record_failure(key)
+            raise AuthenticationError(detail="Adresse ou clé de récupération incorrecte.")
+
+        for key in throttle_keys:
+            self.throttle.reset(key)
+        return user
+
     async def _issue_session(self, user: User) -> IssuedSession:
         refresh_token = generate_refresh_token()
         await self.tokens.create(
@@ -157,7 +243,7 @@ class AuthService:
         )
 
     @staticmethod
-    def _throttle_keys(email: str, client_ip: str) -> tuple[str, str]:
+    def _throttle_keys(email: str, client_ip: str, *, action: str = "login") -> tuple[str, str]:
         """Locks out per account and per source address.
 
         Neither alone is enough: keying only on the address lets an attacker
@@ -165,5 +251,9 @@ class AuthService:
         of their carnet for the window. Requiring both to stay under the limit
         makes guessing one account from many addresses the expensive path,
         while a targeted lockout still costs the attacker the same address.
+
+        `action` namespaces the login and recovery counters apart: a teacher
+        fumbling their recovery key must not burn down their own ability to
+        log in with the password they still remember, or vice versa.
         """
-        return (f"email:{email}", f"ip:{client_ip}")
+        return (f"{action}:email:{email}", f"{action}:ip:{client_ip}")
