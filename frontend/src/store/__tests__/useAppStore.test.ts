@@ -456,6 +456,169 @@ describe('useAppStore: établissements & class import', () => {
   })
 })
 
+describe('useAppStore: CSV roster import', () => {
+  it('addClassesFromRoster creates one classe per group and opens the first', () => {
+    const store = createAppStore(createMemoryStorage())
+    const etablissementId = store.getState().etablissements[0]?.id
+    if (!etablissementId) throw new Error('expected a seed établissement')
+
+    const result = store.getState().addClassesFromRoster(etablissementId, [
+      { classeCode: '11', eleveNames: ['Clara Baraduc'] },
+      { classeCode: '12', eleveNames: ['Yara Amorri', 'Lucas Jin'] },
+    ])
+
+    expect(result.createdClasseIds).toHaveLength(2)
+    expect(result.mergedClasseCodes).toEqual([])
+    expect(result.duplicateEleveNames).toEqual([])
+    const classes = store.getState().classes.filter((c) => result.createdClasseIds.includes(c.id))
+    expect(classes.map((c) => c.name).sort()).toEqual(['11', '12'])
+    expect(
+      store.getState().eleves.filter((e) => result.createdClasseIds.includes(e.classeId)),
+    ).toHaveLength(3)
+    expect(store.getState().activeClasseId).toBe(result.createdClasseIds[0])
+  })
+
+  it('addClassesFromRoster rejects an unknown établissement', () => {
+    const store = createAppStore(createMemoryStorage())
+    const before = store.getState().classes
+
+    const result = store
+      .getState()
+      .addClassesFromRoster('nope', [{ classeCode: '11', eleveNames: ['Clara Baraduc'] }])
+
+    expect(result).toEqual({ createdClasseIds: [], mergedClasseCodes: [], duplicateEleveNames: [] })
+    expect(store.getState().classes).toBe(before)
+  })
+
+  it('addClassesFromRoster merges into an existing classe of the same name instead of duplicating it', () => {
+    const store = createAppStore(createMemoryStorage())
+    const etablissementId = store.getState().etablissements[0]?.id
+    if (!etablissementId) throw new Error('expected a seed établissement')
+    const classeId = store.getState().createClasseWithEleves({
+      etablissementId,
+      name: '11',
+      eleveNames: ['Clara Baraduc'],
+    })
+    const classesBefore = store.getState().classes.length
+
+    // Re-running the same file: same classe code, one repeat student, one new one.
+    const result = store
+      .getState()
+      .addClassesFromRoster(etablissementId, [
+        { classeCode: '11', eleveNames: ['Clara Baraduc', 'Yara Amorri'] },
+      ])
+
+    expect(result.createdClasseIds).toEqual([])
+    expect(result.mergedClasseCodes).toEqual(['11'])
+    expect(result.duplicateEleveNames).toEqual(['Clara Baraduc'])
+    expect(store.getState().classes).toHaveLength(classesBefore)
+    expect(store.getState().eleves.filter((e) => e.classeId === classeId)).toHaveLength(2)
+  })
+
+  it('addElevesToExistingClasses matches groups to classes by name and reports the rest', () => {
+    const store = createAppStore(createMemoryStorage())
+    const etablissementId = store.getState().etablissements[0]?.id
+    if (!etablissementId) throw new Error('expected a seed établissement')
+    const classeId = store.getState().createClasseWithEleves({
+      etablissementId,
+      name: '11',
+      eleveNames: [],
+    })
+
+    const result = store.getState().addElevesToExistingClasses(etablissementId, [
+      { classeCode: '11', eleveNames: ['Clara Baraduc'] },
+      { classeCode: '99', eleveNames: ['Ghost Student'] },
+    ])
+
+    expect(result).toEqual({ addedCount: 1, unmatchedCodes: ['99'], duplicateEleveNames: [] })
+    expect(store.getState().eleves.filter((e) => e.classeId === classeId)).toHaveLength(1)
+    expect(store.getState().eleves.some((e) => e.name === 'Ghost Student')).toBe(false)
+  })
+
+  it('addElevesToExistingClasses skips a homonym already in the target classe', () => {
+    const store = createAppStore(createMemoryStorage())
+    const etablissementId = store.getState().etablissements[0]?.id
+    if (!etablissementId) throw new Error('expected a seed établissement')
+    const classeId = store.getState().createClasseWithEleves({
+      etablissementId,
+      name: '11',
+      eleveNames: ['Clara Baraduc'],
+    })
+
+    const result = store
+      .getState()
+      .addElevesToExistingClasses(etablissementId, [
+        { classeCode: '11', eleveNames: ['Clara Baraduc', 'Yara Amorri'] },
+      ])
+
+    expect(result).toEqual({
+      addedCount: 1,
+      unmatchedCodes: [],
+      duplicateEleveNames: ['Clara Baraduc'],
+    })
+    expect(store.getState().eleves.filter((e) => e.classeId === classeId)).toHaveLength(2)
+  })
+
+  it('resetAndImportRoster replaces the roster, keeps tags, and buries the previous records', () => {
+    const store = createAppStore(createMemoryStorage())
+    const previousEtablissementIds = store.getState().etablissements.map((e) => e.id)
+    const previousClasseIds = store.getState().classes.map((c) => c.id)
+    const previousEleveIds = store.getState().eleves.map((e) => e.id)
+    const tagsBefore = store.getState().tags
+
+    const result = store.getState().resetAndImportRoster('Collège Jean Moulin', [
+      { classeCode: '11', eleveNames: ['Clara Baraduc'] },
+      { classeCode: '12', eleveNames: ['Yara Amorri'] },
+    ])
+
+    expect(result).toMatchObject({ classeCount: 2, eleveCount: 2, duplicateEleveNames: [] })
+    const state = store.getState()
+    expect(state.etablissements).toEqual([
+      { id: result.etablissementId, name: 'Collège Jean Moulin' },
+    ])
+    expect(state.classes.map((c) => c.name).sort()).toEqual(['11', '12'])
+    expect(state.eleves).toHaveLength(2)
+    expect(state.events).toEqual([])
+    expect(state.tags).toBe(tagsBefore)
+
+    for (const id of previousEtablissementIds) {
+      expect(state.tombstones[`etablissement:${id}`]).toBeDefined()
+    }
+    for (const id of previousClasseIds) {
+      expect(state.tombstones[`classe:${id}`]).toBeDefined()
+    }
+    for (const id of previousEleveIds) {
+      expect(state.tombstones[`eleve:${id}`]).toBeDefined()
+    }
+  })
+
+  it('resetAndImportRoster drops a name repeated within the same classe group', () => {
+    const store = createAppStore(createMemoryStorage())
+
+    const result = store
+      .getState()
+      .resetAndImportRoster('Collège Jean Moulin', [
+        { classeCode: '11', eleveNames: ['Clara Baraduc', 'clara baraduc'] },
+      ])
+
+    expect(result.eleveCount).toBe(1)
+    expect(result.duplicateEleveNames).toEqual(['clara baraduc'])
+    expect(store.getState().eleves).toHaveLength(1)
+  })
+
+  it('resetAndImportRoster rejects a blank établissement name without touching the roster', () => {
+    const store = createAppStore(createMemoryStorage())
+    const before = store.getState()
+
+    const result = store
+      .getState()
+      .resetAndImportRoster('  ', [{ classeCode: '11', eleveNames: ['Clara Baraduc'] }])
+
+    expect(result.etablissementId).toBe('')
+    expect(store.getState().etablissements).toBe(before.etablissements)
+  })
+})
+
 describe('useAppStore: tag category rename & delete', () => {
   it('renames a category, trimmed', () => {
     const store = createAppStore(createMemoryStorage())
