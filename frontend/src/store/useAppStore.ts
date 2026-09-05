@@ -48,6 +48,24 @@ export interface AddElevesToExistingClassesResult {
   addedCount: number
   /** Roster groups whose classe code matched no existing classe in the établissement — not inserted. */
   unmatchedCodes: string[]
+  /** Names already present in their target classe (there or added earlier in this same import) — not inserted again. */
+  duplicateEleveNames: string[]
+}
+
+export interface AddClassesFromRosterResult {
+  createdClasseIds: Id[]
+  /** Codes that already named a classe in the établissement — élèves were merged into it instead of duplicating the classe. */
+  mergedClasseCodes: string[]
+  /** Names already present in their target classe (there or added earlier in this same import) — not inserted again. */
+  duplicateEleveNames: string[]
+}
+
+export interface ResetAndImportRosterResult {
+  etablissementId: Id
+  classeCount: number
+  eleveCount: number
+  /** Names repeated within the same CSV group — only the first occurrence is kept. */
+  duplicateEleveNames: string[]
 }
 
 /**
@@ -93,8 +111,11 @@ export interface AppState extends SyncSlices {
     etablissementId: Id,
     groups: RosterGroup[],
   ) => AddElevesToExistingClassesResult
-  addClassesFromRoster: (etablissementId: Id, groups: RosterGroup[]) => Id[]
-  resetAndImportRoster: (etablissementName: string, groups: RosterGroup[]) => Id
+  addClassesFromRoster: (etablissementId: Id, groups: RosterGroup[]) => AddClassesFromRosterResult
+  resetAndImportRoster: (
+    etablissementName: string,
+    groups: RosterGroup[],
+  ) => ResetAndImportRosterResult
 }
 
 type AppActions =
@@ -473,24 +494,42 @@ export function createAppStore(
 
         /**
          * "Ajout d'élèves" import mode: each roster group is matched against an
-         * existing classe in the établissement by exact name (the CSV's raw
-         * classe code). A group with no match is skipped and reported, rather
-         * than silently dropped or turned into a surprise new classe.
+         * existing classe in the établissement by name (accent- and
+         * case-insensitively). A group with no match is skipped and reported,
+         * rather than silently dropped or turned into a surprise new classe.
+         * A name already in its target classe — re-running the same file, or
+         * two homonymous students — is skipped and reported too, never
+         * duplicated.
          */
         addElevesToExistingClasses: (etablissementId, groups) => {
           const classesInEtab = get().classes.filter((c) => c.etablissementId === etablissementId)
           const unmatchedCodes: string[] = []
+          const duplicateEleveNames: string[] = []
           const newEleves: Eleve[] = []
 
           for (const group of groups) {
-            const classe = classesInEtab.find((c) => c.name === group.classeCode)
+            const code = group.classeCode.trim()
+            const classe = classesInEtab.find((c) => c.name.toLowerCase() === code.toLowerCase())
             if (!classe) {
               unmatchedCodes.push(group.classeCode)
               continue
             }
+
+            const takenNames = new Set(
+              get()
+                .eleves.filter((e) => e.classeId === classe.id)
+                .map((e) => e.name.toLowerCase()),
+            )
+
             for (const rawName of group.eleveNames) {
               const name = rawName.trim()
               if (name === '') continue
+              const key = name.toLowerCase()
+              if (takenNames.has(key)) {
+                duplicateEleveNames.push(name)
+                continue
+              }
+              takenNames.add(key)
               newEleves.push({ id: generateId(), classeId: classe.id, name })
             }
           }
@@ -502,32 +541,67 @@ export function createAppStore(
             }))
           }
 
-          return { addedCount: newEleves.length, unmatchedCodes }
+          return { addedCount: newEleves.length, unmatchedCodes, duplicateEleveNames }
         },
 
         /**
          * "Ajout de classes" import mode: one new classe per roster group,
-         * named after its raw CSV classe code, plus its students.
+         * named after its raw CSV classe code — unless a classe of that name
+         * already exists in the établissement (a rerun of the same file, most
+         * often), in which case its students are merged into the existing
+         * classe instead of creating a duplicate. Either way, a student name
+         * already in the target classe is skipped rather than duplicated.
          */
         addClassesFromRoster: (etablissementId, groups) => {
-          if (!get().etablissements.some((e) => e.id === etablissementId)) return []
+          if (!get().etablissements.some((e) => e.id === etablissementId)) {
+            return { createdClasseIds: [], mergedClasseCodes: [], duplicateEleveNames: [] }
+          }
 
+          const existingClasses = get().classes.filter((c) => c.etablissementId === etablissementId)
           const newClasses: Classe[] = []
           const newEleves: Eleve[] = []
+          const mergedClasseCodes: string[] = []
+          const duplicateEleveNames: string[] = []
 
           for (const group of groups) {
             const code = group.classeCode.trim()
             if (code === '') continue
-            const classeId = generateId()
-            newClasses.push({ id: classeId, etablissementId, name: code, niveau: '' })
+
+            const existing = existingClasses.find(
+              (c) => c.name.toLowerCase() === code.toLowerCase(),
+            )
+            let classeId: Id
+            if (existing) {
+              classeId = existing.id
+              mergedClasseCodes.push(code)
+            } else {
+              classeId = generateId()
+              newClasses.push({ id: classeId, etablissementId, name: code, niveau: '' })
+            }
+
+            const takenNames = new Set([
+              ...get()
+                .eleves.filter((e) => e.classeId === classeId)
+                .map((e) => e.name.toLowerCase()),
+              ...newEleves.filter((e) => e.classeId === classeId).map((e) => e.name.toLowerCase()),
+            ])
+
             for (const rawName of group.eleveNames) {
               const name = rawName.trim()
               if (name === '') continue
+              const key = name.toLowerCase()
+              if (takenNames.has(key)) {
+                duplicateEleveNames.push(name)
+                continue
+              }
+              takenNames.add(key)
               newEleves.push({ id: generateId(), classeId, name })
             }
           }
 
-          if (newClasses.length === 0) return []
+          if (newClasses.length === 0 && newEleves.length === 0) {
+            return { createdClasseIds: [], mergedClasseCodes, duplicateEleveNames }
+          }
 
           set((state) => ({
             classes: [...state.classes, ...newClasses],
@@ -541,7 +615,11 @@ export function createAppStore(
             ),
           }))
 
-          return newClasses.map((c) => c.id)
+          return {
+            createdClasseIds: newClasses.map((c) => c.id),
+            mergedClasseCodes,
+            duplicateEleveNames,
+          }
         },
 
         /**
@@ -554,20 +632,31 @@ export function createAppStore(
          */
         resetAndImportRoster: (etablissementName, groups) => {
           const trimmedName = etablissementName.trim()
-          if (trimmedName === '') return ''
+          if (trimmedName === '') {
+            return { etablissementId: '', classeCount: 0, eleveCount: 0, duplicateEleveNames: [] }
+          }
 
           const etablissementId = generateId()
           const newClasses: Classe[] = []
           const newEleves: Eleve[] = []
+          const duplicateEleveNames: string[] = []
 
           for (const group of groups) {
             const code = group.classeCode.trim()
             if (code === '') continue
             const classeId = generateId()
             newClasses.push({ id: classeId, etablissementId, name: code, niveau: '' })
+
+            const takenNames = new Set<string>()
             for (const rawName of group.eleveNames) {
               const name = rawName.trim()
               if (name === '') continue
+              const key = name.toLowerCase()
+              if (takenNames.has(key)) {
+                duplicateEleveNames.push(name)
+                continue
+              }
+              takenNames.add(key)
               newEleves.push({ id: generateId(), classeId, name })
             }
           }
@@ -605,7 +694,12 @@ export function createAppStore(
             }
           })
 
-          return etablissementId
+          return {
+            etablissementId,
+            classeCount: newClasses.length,
+            eleveCount: newEleves.length,
+            duplicateEleveNames,
+          }
         },
       }),
       {

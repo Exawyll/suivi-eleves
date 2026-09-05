@@ -462,31 +462,60 @@ describe('useAppStore: CSV roster import', () => {
     const etablissementId = store.getState().etablissements[0]?.id
     if (!etablissementId) throw new Error('expected a seed établissement')
 
-    const classeIds = store.getState().addClassesFromRoster(etablissementId, [
+    const result = store.getState().addClassesFromRoster(etablissementId, [
       { classeCode: '11', eleveNames: ['Clara Baraduc'] },
       { classeCode: '12', eleveNames: ['Yara Amorri', 'Lucas Jin'] },
     ])
 
-    expect(classeIds).toHaveLength(2)
-    const classes = store.getState().classes.filter((c) => classeIds.includes(c.id))
+    expect(result.createdClasseIds).toHaveLength(2)
+    expect(result.mergedClasseCodes).toEqual([])
+    expect(result.duplicateEleveNames).toEqual([])
+    const classes = store.getState().classes.filter((c) => result.createdClasseIds.includes(c.id))
     expect(classes.map((c) => c.name).sort()).toEqual(['11', '12'])
-    expect(store.getState().eleves.filter((e) => classeIds.includes(e.classeId))).toHaveLength(3)
-    expect(store.getState().activeClasseId).toBe(classeIds[0])
+    expect(
+      store.getState().eleves.filter((e) => result.createdClasseIds.includes(e.classeId)),
+    ).toHaveLength(3)
+    expect(store.getState().activeClasseId).toBe(result.createdClasseIds[0])
   })
 
   it('addClassesFromRoster rejects an unknown établissement', () => {
     const store = createAppStore(createMemoryStorage())
     const before = store.getState().classes
 
-    const classeIds = store
+    const result = store
       .getState()
       .addClassesFromRoster('nope', [{ classeCode: '11', eleveNames: ['Clara Baraduc'] }])
 
-    expect(classeIds).toEqual([])
+    expect(result).toEqual({ createdClasseIds: [], mergedClasseCodes: [], duplicateEleveNames: [] })
     expect(store.getState().classes).toBe(before)
   })
 
-  it('addElevesToExistingClasses matches groups to classes by exact name and reports the rest', () => {
+  it('addClassesFromRoster merges into an existing classe of the same name instead of duplicating it', () => {
+    const store = createAppStore(createMemoryStorage())
+    const etablissementId = store.getState().etablissements[0]?.id
+    if (!etablissementId) throw new Error('expected a seed établissement')
+    const classeId = store.getState().createClasseWithEleves({
+      etablissementId,
+      name: '11',
+      eleveNames: ['Clara Baraduc'],
+    })
+    const classesBefore = store.getState().classes.length
+
+    // Re-running the same file: same classe code, one repeat student, one new one.
+    const result = store
+      .getState()
+      .addClassesFromRoster(etablissementId, [
+        { classeCode: '11', eleveNames: ['Clara Baraduc', 'Yara Amorri'] },
+      ])
+
+    expect(result.createdClasseIds).toEqual([])
+    expect(result.mergedClasseCodes).toEqual(['11'])
+    expect(result.duplicateEleveNames).toEqual(['Clara Baraduc'])
+    expect(store.getState().classes).toHaveLength(classesBefore)
+    expect(store.getState().eleves.filter((e) => e.classeId === classeId)).toHaveLength(2)
+  })
+
+  it('addElevesToExistingClasses matches groups to classes by name and reports the rest', () => {
     const store = createAppStore(createMemoryStorage())
     const etablissementId = store.getState().etablissements[0]?.id
     if (!etablissementId) throw new Error('expected a seed établissement')
@@ -501,9 +530,33 @@ describe('useAppStore: CSV roster import', () => {
       { classeCode: '99', eleveNames: ['Ghost Student'] },
     ])
 
-    expect(result).toEqual({ addedCount: 1, unmatchedCodes: ['99'] })
+    expect(result).toEqual({ addedCount: 1, unmatchedCodes: ['99'], duplicateEleveNames: [] })
     expect(store.getState().eleves.filter((e) => e.classeId === classeId)).toHaveLength(1)
     expect(store.getState().eleves.some((e) => e.name === 'Ghost Student')).toBe(false)
+  })
+
+  it('addElevesToExistingClasses skips a homonym already in the target classe', () => {
+    const store = createAppStore(createMemoryStorage())
+    const etablissementId = store.getState().etablissements[0]?.id
+    if (!etablissementId) throw new Error('expected a seed établissement')
+    const classeId = store.getState().createClasseWithEleves({
+      etablissementId,
+      name: '11',
+      eleveNames: ['Clara Baraduc'],
+    })
+
+    const result = store
+      .getState()
+      .addElevesToExistingClasses(etablissementId, [
+        { classeCode: '11', eleveNames: ['Clara Baraduc', 'Yara Amorri'] },
+      ])
+
+    expect(result).toEqual({
+      addedCount: 1,
+      unmatchedCodes: [],
+      duplicateEleveNames: ['Clara Baraduc'],
+    })
+    expect(store.getState().eleves.filter((e) => e.classeId === classeId)).toHaveLength(2)
   })
 
   it('resetAndImportRoster replaces the roster, keeps tags, and buries the previous records', () => {
@@ -513,13 +566,16 @@ describe('useAppStore: CSV roster import', () => {
     const previousEleveIds = store.getState().eleves.map((e) => e.id)
     const tagsBefore = store.getState().tags
 
-    const etablissementId = store.getState().resetAndImportRoster('Collège Jean Moulin', [
+    const result = store.getState().resetAndImportRoster('Collège Jean Moulin', [
       { classeCode: '11', eleveNames: ['Clara Baraduc'] },
       { classeCode: '12', eleveNames: ['Yara Amorri'] },
     ])
 
+    expect(result).toMatchObject({ classeCount: 2, eleveCount: 2, duplicateEleveNames: [] })
     const state = store.getState()
-    expect(state.etablissements).toEqual([{ id: etablissementId, name: 'Collège Jean Moulin' }])
+    expect(state.etablissements).toEqual([
+      { id: result.etablissementId, name: 'Collège Jean Moulin' },
+    ])
     expect(state.classes.map((c) => c.name).sort()).toEqual(['11', '12'])
     expect(state.eleves).toHaveLength(2)
     expect(state.events).toEqual([])
@@ -536,15 +592,29 @@ describe('useAppStore: CSV roster import', () => {
     }
   })
 
+  it('resetAndImportRoster drops a name repeated within the same classe group', () => {
+    const store = createAppStore(createMemoryStorage())
+
+    const result = store
+      .getState()
+      .resetAndImportRoster('Collège Jean Moulin', [
+        { classeCode: '11', eleveNames: ['Clara Baraduc', 'clara baraduc'] },
+      ])
+
+    expect(result.eleveCount).toBe(1)
+    expect(result.duplicateEleveNames).toEqual(['clara baraduc'])
+    expect(store.getState().eleves).toHaveLength(1)
+  })
+
   it('resetAndImportRoster rejects a blank établissement name without touching the roster', () => {
     const store = createAppStore(createMemoryStorage())
     const before = store.getState()
 
-    const id = store
+    const result = store
       .getState()
       .resetAndImportRoster('  ', [{ classeCode: '11', eleveNames: ['Clara Baraduc'] }])
 
-    expect(id).toBe('')
+    expect(result.etablissementId).toBe('')
     expect(store.getState().etablissements).toBe(before.etablissements)
   })
 })

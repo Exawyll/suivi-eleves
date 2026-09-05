@@ -106,10 +106,7 @@ export function EtablissementsPage() {
         onClose={() => setImportTarget(null)}
       />
 
-      <RosterImportSheet
-        isOpen={isRosterImportOpen}
-        onClose={() => setIsRosterImportOpen(false)}
-      />
+      <RosterImportSheet isOpen={isRosterImportOpen} onClose={() => setIsRosterImportOpen(false)} />
     </div>
   )
 }

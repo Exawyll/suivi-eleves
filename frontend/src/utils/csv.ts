@@ -69,7 +69,9 @@ function normalise(value: string): string {
 /** True when every letter in `word` is uppercase (accents included, punctuation ignored). */
 function isAllCaps(word: string): boolean {
   const letters = word.replace(/[^\p{L}]/gu, '')
-  return letters.length > 0 && letters === letters.toUpperCase() && letters !== letters.toLowerCase()
+  return (
+    letters.length > 0 && letters === letters.toUpperCase() && letters !== letters.toLowerCase()
+  )
 }
 
 /** Title-cases a surname segment: "BERNARD--ZAPATER" -> "Bernard--Zapater". */

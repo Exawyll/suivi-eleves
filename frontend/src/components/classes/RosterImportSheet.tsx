@@ -15,16 +15,26 @@ interface RosterImportSheetProps {
 const MODE_LABELS: Record<ImportMode, { title: string; hint: string }> = {
   addClasses: {
     title: 'Ajouter des classes',
-    hint: 'Une classe est créée par valeur de la colonne « Classe » du fichier.',
+    hint: 'Une classe est créée par valeur de la colonne « Classe » du fichier (les classes et élèves déjà présents sont complétés, jamais dupliqués).',
   },
   addEleves: {
-    title: "Ajouter des élèves",
-    hint: 'Chaque élève rejoint la classe existante correspondant à sa colonne « Classe ».',
+    title: 'Ajouter des élèves',
+    hint: 'Chaque élève rejoint la classe existante correspondant à sa colonne « Classe » (les homonymes déjà présents sont ignorés).',
   },
   reset: {
     title: 'Repartir de zéro',
     hint: 'Supprime les établissements, classes, élèves et événements actuels, puis insère le fichier.',
   },
+}
+
+/** "1 élève" / "3 élèves". */
+function countLabel(count: number, singular: string): string {
+  return `${count} ${singular}${agree(count)}`
+}
+
+/** Plural agreement suffix for a count. */
+function agree(count: number): string {
+  return count > 1 ? 's' : ''
 }
 
 /**
@@ -105,8 +115,16 @@ export function RosterImportSheet({ isOpen, onClose }: RosterImportSheetProps) {
         setError('Cochez la case de confirmation pour supprimer les données actuelles.')
         return
       }
-      resetAndImportRoster(trimmedName, groups)
-      close()
+      const { classeCount, eleveCount, duplicateEleveNames } = resetAndImportRoster(
+        trimmedName,
+        groups,
+      )
+      let summary = `Import terminé : ${countLabel(classeCount, 'classe')}, ${countLabel(eleveCount, 'élève')}.`
+      if (duplicateEleveNames.length > 0) {
+        summary += ` ${countLabel(duplicateEleveNames.length, 'doublon')} dans le fichier, ignoré${agree(duplicateEleveNames.length)} : ${duplicateEleveNames.join(', ')}.`
+      }
+      setResult(summary)
+      setDone(true)
       return
     }
 
@@ -116,21 +134,35 @@ export function RosterImportSheet({ isOpen, onClose }: RosterImportSheetProps) {
     }
 
     if (mode === 'addClasses') {
-      addClassesFromRoster(etablissementId, groups)
-      close()
-      return
-    }
-
-    const { addedCount, unmatchedCodes } = addElevesToExistingClasses(etablissementId, groups)
-    if (unmatchedCodes.length > 0) {
-      setResult(
-        `${addedCount} élève${addedCount > 1 ? 's' : ''} ajouté${addedCount > 1 ? 's' : ''}. ` +
-          `Classe${unmatchedCodes.length > 1 ? 's' : ''} introuvable${unmatchedCodes.length > 1 ? 's' : ''} dans cet établissement, ignorée${unmatchedCodes.length > 1 ? 's' : ''} : ${unmatchedCodes.join(', ')}.`,
+      const { createdClasseIds, mergedClasseCodes, duplicateEleveNames } = addClassesFromRoster(
+        etablissementId,
+        groups,
       )
+      let summary = `${countLabel(createdClasseIds.length, 'classe')} créée${agree(createdClasseIds.length)}.`
+      if (mergedClasseCodes.length > 0) {
+        summary += ` ${countLabel(mergedClasseCodes.length, 'classe')} déjà existante${agree(mergedClasseCodes.length)}, élèves complétés (${mergedClasseCodes.join(', ')}).`
+      }
+      if (duplicateEleveNames.length > 0) {
+        summary += ` ${countLabel(duplicateEleveNames.length, 'élève')} déjà présent${agree(duplicateEleveNames.length)}, ignoré${agree(duplicateEleveNames.length)} : ${duplicateEleveNames.join(', ')}.`
+      }
+      setResult(summary)
       setDone(true)
       return
     }
-    close()
+
+    const { addedCount, unmatchedCodes, duplicateEleveNames } = addElevesToExistingClasses(
+      etablissementId,
+      groups,
+    )
+    let summary = `${countLabel(addedCount, 'élève')} ajouté${agree(addedCount)}.`
+    if (unmatchedCodes.length > 0) {
+      summary += ` Classe${agree(unmatchedCodes.length)} introuvable${agree(unmatchedCodes.length)}, ignorée${agree(unmatchedCodes.length)} : ${unmatchedCodes.join(', ')}.`
+    }
+    if (duplicateEleveNames.length > 0) {
+      summary += ` ${countLabel(duplicateEleveNames.length, 'élève')} déjà présent${agree(duplicateEleveNames.length)}, ignoré${agree(duplicateEleveNames.length)} : ${duplicateEleveNames.join(', ')}.`
+    }
+    setResult(summary)
+    setDone(true)
   }
 
   return (
@@ -145,7 +177,7 @@ export function RosterImportSheet({ isOpen, onClose }: RosterImportSheetProps) {
             type="button"
             className={styles.saveButton}
             onClick={done ? close : save}
-            disabled={mode === 'reset' && groups.length > 0 && !confirmReset}
+            disabled={!done && mode === 'reset' && groups.length > 0 && !confirmReset}
           >
             {done
               ? 'Fermer'
@@ -252,8 +284,8 @@ export function RosterImportSheet({ isOpen, onClose }: RosterImportSheetProps) {
             Cette action supprime définitivement {etablissements.length} établissement
             {etablissements.length > 1 ? 's' : ''}, {classesCount} classe
             {classesCount > 1 ? 's' : ''} et {elevesCount} élève{elevesCount > 1 ? 's' : ''} déjà
-            enregistrés (données de démo incluses), ainsi que leur historique d'événements. Les
-            tags de comportement sont conservés.
+            enregistrés (données de démo incluses), ainsi que leur historique d'événements. Les tags
+            de comportement sont conservés.
           </div>
           <label className={styles.checkboxRow}>
             <input

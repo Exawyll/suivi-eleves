@@ -115,8 +115,7 @@ describe('splitNomPrenom', () => {
 
 describe('parseCsvRoster', () => {
   it('extracts name and classe code from a Pronote-style export', () => {
-    const csv =
-      'Élèves;Classe\n"AMORRI Yara";"12"\n"BARADUC Clara";"11"\n"BORDES Gabin";"15"'
+    const csv = 'Élèves;Classe\n"AMORRI Yara";"12"\n"BARADUC Clara";"11"\n"BORDES Gabin";"15"'
 
     expect(parseCsvRoster(csv)).toEqual([
       { name: 'Yara Amorri', classeCode: '12' },
