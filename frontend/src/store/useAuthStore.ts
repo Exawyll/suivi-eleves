@@ -237,8 +237,11 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
           dekNonceRecovery: wrappedForRecovery.dekNonce,
         })
         recoveryKeyText = encodeRecoveryKey(recoveryKeyBytes)
-      } catch {
-        // Nothing to undo: the account exists and is usable either way.
+      } catch (recoveryError) {
+        // Nothing to undo: the account exists and is usable either way. Still
+        // logged rather than fully silent — a swallowed failure here should
+        // at least be diagnosable from the console.
+        console.error('Recovery key setup failed during signup:', recoveryError)
       }
 
       const session: StoredSession = {

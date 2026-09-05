@@ -10,6 +10,9 @@ interface RecoverFormProps {
    * second step. Owned by the store, not local state: it is what the recovery
    * key was actually checked against, not just what was typed. */
   recoveryEmail: string | null
+  /** Pre-fills the address when it is already known — coming from the locked
+   * screen of a device that has a local account, say. Left blank otherwise. */
+  initialEmail?: string
   onStart: (email: string, recoveryKey: string) => void
   onComplete: (newPassword: string) => void
   onCancel: () => void
@@ -27,12 +30,13 @@ export const RecoverForm = ({
   serverError,
   onClearServerError,
   recoveryEmail,
+  initialEmail = '',
   onStart,
   onComplete,
   onCancel,
   onBackToLogin,
 }: RecoverFormProps) => {
-  const [email, setEmail] = useState('')
+  const [email, setEmail] = useState(initialEmail)
   const [recoveryKey, setRecoveryKey] = useState('')
   const [password, setPassword] = useState('')
   const [passwordConfirm, setPasswordConfirm] = useState('')
