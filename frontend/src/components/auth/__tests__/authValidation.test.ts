@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { validateLogin, validateSignup } from '@/components/auth/authValidation'
+import {
+  validateLogin,
+  validateNewPassword,
+  validateRecoveryRequest,
+  validateSignup,
+} from '@/components/auth/authValidation'
 
 const VALID = {
   firstName: 'Claire',
@@ -61,5 +66,28 @@ describe('validation de la connexion', () => {
   it('refuse une adresse invalide ou un mot de passe vide', () => {
     expect(validateLogin('claire', 'motdepasse')).toContain('email')
     expect(validateLogin('claire.roy@ecole.fr', '')).toContain('requis')
+  })
+})
+
+describe('validation de la demande de récupération', () => {
+  it('accepte une adresse et une clé non vide', () => {
+    expect(validateRecoveryRequest('claire.roy@ecole.fr', 'ABCDE-FGHIJ')).toBeNull()
+  })
+
+  it('refuse une adresse invalide ou une clé vide', () => {
+    expect(validateRecoveryRequest('claire', 'ABCDE-FGHIJ')).toContain('email')
+    expect(validateRecoveryRequest('claire.roy@ecole.fr', '   ')).toContain('requise')
+  })
+})
+
+describe('validation du nouveau mot de passe', () => {
+  it('accepte deux mots de passe identiques et assez longs', () => {
+    expect(validateNewPassword('motdepasse', 'motdepasse')).toBeNull()
+  })
+
+  it('refuse un mot de passe trop court, vide en pratique, ou qui ne correspond pas', () => {
+    expect(validateNewPassword('12345', '12345')).toContain('6 caractères')
+    expect(validateNewPassword('        ', '        ')).toContain('espaces')
+    expect(validateNewPassword('motdepasse', 'autre chose')).toContain('ne correspondent pas')
   })
 })

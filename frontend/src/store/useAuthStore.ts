@@ -1,14 +1,24 @@
 import { create } from 'zustand'
 import { ApiError, OfflineError, configureApiAuth } from '@/api/client'
-import { fetchKdfParams, loginRequest, logoutRequest, signupRequest } from '@/api/auth'
+import {
+  completeRecoveryRequest,
+  fetchKdfParams,
+  loginRequest,
+  logoutRequest,
+  setupRecoveryRequest,
+  signupRequest,
+  startRecoveryRequest,
+} from '@/api/auth'
 import type { ApiSession } from '@/api/auth'
 import {
   DEFAULT_KDF_ITERATIONS,
   assertUsableKdfParams,
   deriveCredentials,
+  deriveRecoveryCredentials,
   randomKdfSalt,
 } from '@/crypto/kdf'
 import { base64ToBytes, bytesToBase64 } from '@/crypto/base64'
+import { decodeRecoveryKey, encodeRecoveryKey, randomRecoveryKey } from '@/crypto/recoveryKey'
 import { generateDataKey, unwrapDataKey, wrapDataKey } from '@/crypto/vault'
 import { forgetDataKey, recallDataKey, rememberDataKey } from '@/crypto/deviceKeyStore'
 import { discardLegacyCarnet, readLegacyCarnet } from '@/store/legacyCarnet'
@@ -43,6 +53,15 @@ export interface AuthState {
    * synchronised until the teacher signs in again, with the network up.
    */
   needsReauth: boolean
+  /**
+   * A recovery key just generated (at signup, on regenerating, or as the
+   * by-product of a successful account recovery) and not yet acknowledged.
+   * Shown once, then gone — nothing keeps it around after `acknowledgePendingRecoveryKey`.
+   */
+  pendingRecoveryKey: string | null
+  /** The email a "mot de passe oublié" flow is currently working on, or null
+   * before it starts and after it finishes. */
+  recoveryEmail: string | null
   restore: () => Promise<void>
   signup: (input: SignupInput) => Promise<void>
   login: (email: string, password: string) => Promise<void>
@@ -51,6 +70,15 @@ export interface AuthState {
   logout: () => Promise<void>
   forgetAccount: () => Promise<void>
   clearError: () => void
+  /** Re-derives the current key from the password to (re)generate a recovery
+   * key. Needs the password again: the device only ever keeps a
+   * non-extractable copy of the data key, and wrapping it a second time needs
+   * an extractable one. */
+  setupRecovery: (password: string) => Promise<void>
+  acknowledgePendingRecoveryKey: () => void
+  startRecovery: (email: string, recoveryKeyText: string) => Promise<void>
+  completeRecovery: (newPassword: string) => Promise<void>
+  cancelRecovery: () => void
 }
 
 export interface SignupInput {
@@ -68,12 +96,25 @@ export interface SignupInput {
 let accessToken: string | null = null
 let refreshToken: string | null = null
 
+/**
+ * The state carried between `startRecovery` and `completeRecovery`.
+ *
+ * Kept here rather than in the store's state for the same reason as the
+ * tokens above: it is a live `CryptoKey` plus a secret proving who is
+ * recovering, neither of which belongs in anything that could be persisted or
+ * inspected. `recoveryAuthSecret` is kept so `completeRecovery` can prove
+ * possession of the key a second time without asking the teacher to retype
+ * it — there is no session yet to carry that proof across the two calls.
+ */
+let recoveryContext: { email: string; recoveryAuthSecret: string; dek: CryptoKey } | null = null
+
 function sessionFrom(response: ApiSession): StoredSession {
   return {
     userId: response.user.id,
     email: response.user.email,
     firstName: response.user.firstName,
     lastName: response.user.lastName,
+    recoveryEnabled: response.user.recoveryEnabled,
     kdfSalt: response.crypto.kdfSalt,
     kdfIterations: response.crypto.kdfIterations,
     wrappedDek: response.crypto.wrappedDek,
@@ -120,6 +161,8 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
   error: null,
   busy: false,
   needsReauth: false,
+  pendingRecoveryKey: null,
+  recoveryEmail: null,
 
   restore: async () => {
     const session = readSession()
@@ -156,6 +199,14 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
       const dek = await generateDataKey()
       const wrapped = await wrapDataKey(dek, kek)
 
+      // Generated here, while the freshly minted key is still extractable —
+      // the one moment this does not cost asking for the password a second
+      // time. `dek` wraps twice; wrapping does not consume the key.
+      const recoveryKeyBytes = randomRecoveryKey()
+      const { authSecret: recoveryAuthSecret, kek: recoveryKek } =
+        await deriveRecoveryCredentials(recoveryKeyBytes)
+      const wrappedForRecovery = await wrapDataKey(dek, recoveryKek)
+
       const response = await signupRequest({
         email,
         firstName,
@@ -169,12 +220,34 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
       // Re-imported non-extractable: the generated key had to be extractable
       // to be wrapped, and nothing needs its bytes again.
       const storedDek = await unwrapDataKey(wrapped, kek)
-      const session = sessionFrom(response)
       accessToken = response.accessToken
       refreshToken = response.refreshToken
 
-      await rememberDataKey(session.userId, storedDek)
-      wireApiAuth(session.userId, storedDek)
+      await rememberDataKey(response.user.id, storedDek)
+      wireApiAuth(response.user.id, storedDek)
+
+      // Best-effort: a fresh account is fully usable without a recovery key,
+      // and Settings offers the same setup again if this call is lost to a
+      // flaky connection right after signing up.
+      let recoveryKeyText: string | null = null
+      try {
+        await setupRecoveryRequest({
+          recoveryAuthSecret,
+          wrappedDekRecovery: wrappedForRecovery.wrappedDek,
+          dekNonceRecovery: wrappedForRecovery.dekNonce,
+        })
+        recoveryKeyText = encodeRecoveryKey(recoveryKeyBytes)
+      } catch (recoveryError) {
+        // Nothing to undo: the account exists and is usable either way. Still
+        // logged rather than fully silent — a swallowed failure here should
+        // at least be diagnosable from the console.
+        console.error('Recovery key setup failed during signup:', recoveryError)
+      }
+
+      const session: StoredSession = {
+        ...sessionFrom(response),
+        recoveryEnabled: recoveryKeyText !== null,
+      }
       writeSession(session)
       await writeRefreshToken(session.userId, storedDek, response.refreshToken)
 
@@ -186,7 +259,14 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
       // the strength of a write still in flight would lose a real carnet.
       if (adopted !== null && written) discardLegacyCarnet()
 
-      set({ status: 'unlocked', session, busy: false, error: null, needsReauth: false })
+      set({
+        status: 'unlocked',
+        session,
+        busy: false,
+        error: null,
+        needsReauth: false,
+        pendingRecoveryKey: recoveryKeyText,
+      })
     } catch (error) {
       set({ busy: false, error: messageFor(error) })
       throw error
@@ -349,4 +429,155 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
   },
 
   clearError: () => set({ error: null }),
+
+  setupRecovery: async (password) => {
+    const session = get().session
+    if (session === null) return
+
+    set({ busy: true, error: null })
+    let dek: CryptoKey
+    try {
+      const salt = base64ToBytes(session.kdfSalt)
+      assertUsableKdfParams(session.kdfIterations, salt)
+      const { kek } = await deriveCredentials(password, salt, session.kdfIterations)
+      // Extractable: about to be wrapped again, under the recovery key this
+      // time. Fails loudly on a wrong password, same as `unlockOffline`.
+      dek = await unwrapDataKey(
+        { wrappedDek: session.wrappedDek, dekNonce: session.dekNonce },
+        kek,
+        true,
+      )
+    } catch {
+      set({ busy: false, error: 'Mot de passe incorrect.' })
+      return
+    }
+
+    try {
+      const recoveryKeyBytes = randomRecoveryKey()
+      const { authSecret: recoveryAuthSecret, kek: recoveryKek } =
+        await deriveRecoveryCredentials(recoveryKeyBytes)
+      const wrapped = await wrapDataKey(dek, recoveryKek)
+
+      await setupRecoveryRequest({
+        recoveryAuthSecret,
+        wrappedDekRecovery: wrapped.wrappedDek,
+        dekNonceRecovery: wrapped.dekNonce,
+      })
+
+      const updated: StoredSession = { ...session, recoveryEnabled: true }
+      writeSession(updated)
+      set({
+        session: updated,
+        busy: false,
+        error: null,
+        pendingRecoveryKey: encodeRecoveryKey(recoveryKeyBytes),
+      })
+    } catch (error) {
+      set({ busy: false, error: messageFor(error) })
+    }
+  },
+
+  acknowledgePendingRecoveryKey: () => set({ pendingRecoveryKey: null }),
+
+  startRecovery: async (email, recoveryKeyText) => {
+    set({ busy: true, error: null })
+
+    let recoveryBytes: Uint8Array
+    try {
+      recoveryBytes = decodeRecoveryKey(recoveryKeyText)
+    } catch {
+      const message = 'Clé de récupération invalide.'
+      set({ busy: false, error: message })
+      throw new Error(message)
+    }
+
+    try {
+      const normalisedEmail = email.trim().toLowerCase()
+      const { authSecret: recoveryAuthSecret, kek: recoveryKek } =
+        await deriveRecoveryCredentials(recoveryBytes)
+      const material = await startRecoveryRequest(normalisedEmail, recoveryAuthSecret)
+      // Extractable: `completeRecovery` wraps it again under the next
+      // password and the next recovery key.
+      const dek = await unwrapDataKey(
+        { wrappedDek: material.wrappedDekRecovery, dekNonce: material.dekNonceRecovery },
+        recoveryKek,
+        true,
+      )
+      recoveryContext = { email: normalisedEmail, recoveryAuthSecret, dek }
+      set({ busy: false, error: null, recoveryEmail: normalisedEmail })
+    } catch (error) {
+      recoveryContext = null
+      set({ busy: false, error: messageFor(error) })
+      throw error
+    }
+  },
+
+  completeRecovery: async (newPassword) => {
+    if (recoveryContext === null) {
+      set({ error: 'Aucune récupération en cours.' })
+      return
+    }
+    const context = recoveryContext
+
+    set({ busy: true, error: null })
+    try {
+      const newSalt = randomKdfSalt()
+      const { authSecret: newAuthSecret, kek: newKek } = await deriveCredentials(
+        newPassword,
+        newSalt,
+        DEFAULT_KDF_ITERATIONS,
+      )
+      const newRecoveryKeyBytes = randomRecoveryKey()
+      const { authSecret: newRecoveryAuthSecret, kek: newRecoveryKek } =
+        await deriveRecoveryCredentials(newRecoveryKeyBytes)
+
+      const wrappedForPassword = await wrapDataKey(context.dek, newKek)
+      const wrappedForRecovery = await wrapDataKey(context.dek, newRecoveryKek)
+
+      const response = await completeRecoveryRequest({
+        email: context.email,
+        recoveryAuthSecret: context.recoveryAuthSecret,
+        newAuthSecret,
+        kdfSalt: bytesToBase64(newSalt),
+        kdfIterations: DEFAULT_KDF_ITERATIONS,
+        wrappedDek: wrappedForPassword.wrappedDek,
+        dekNonce: wrappedForPassword.dekNonce,
+        newRecoveryAuthSecret,
+        newWrappedDekRecovery: wrappedForRecovery.wrappedDek,
+        newDekNonceRecovery: wrappedForRecovery.dekNonce,
+      })
+
+      const session = sessionFrom(response)
+      const storedDek = await unwrapDataKey(
+        { wrappedDek: wrappedForPassword.wrappedDek, dekNonce: wrappedForPassword.dekNonce },
+        newKek,
+      )
+      accessToken = response.accessToken
+      refreshToken = response.refreshToken
+      await rememberDataKey(session.userId, storedDek)
+      wireApiAuth(session.userId, storedDek)
+      writeSession(session)
+      await writeRefreshToken(session.userId, storedDek, response.refreshToken)
+      await attachVault(session.userId, storedDek)
+
+      recoveryContext = null
+      set({
+        status: 'unlocked',
+        session,
+        busy: false,
+        error: null,
+        needsReauth: false,
+        recoveryEmail: null,
+        pendingRecoveryKey: encodeRecoveryKey(newRecoveryKeyBytes),
+      })
+    } catch (error) {
+      set({ busy: false, error: messageFor(error) })
+      throw error
+    }
+  },
+
+  cancelRecovery: () => {
+    recoveryContext = null
+    set({ recoveryEmail: null, error: null })
+  },
 }))

@@ -16,6 +16,8 @@ export const KDF_SALT_BYTES = 16
 
 const AUTH_INFO = 'carnet:auth:v1'
 const KEK_INFO = 'carnet:kek:v1'
+const RECOVERY_AUTH_INFO = 'carnet:recovery-auth:v1'
+const RECOVERY_KEK_INFO = 'carnet:recovery-kek:v1'
 
 export function randomKdfSalt(): Uint8Array {
   return crypto.getRandomValues(new Uint8Array(KDF_SALT_BYTES))
@@ -99,6 +101,35 @@ export async function deriveCredentials(
   const masterKey = await deriveMasterKey(password, salt, iterations)
   const authBits = await expand(masterKey, AUTH_INFO, 256)
   const kekBits = await expand(masterKey, KEK_INFO, 256)
+  const kek = await crypto.subtle.importKey('raw', kekBits, { name: 'AES-GCM' }, false, [
+    'wrapKey',
+    'unwrapKey',
+    'encrypt',
+    'decrypt',
+  ])
+  return { authSecret: bytesToBase64(new Uint8Array(authBits)), kek }
+}
+
+/**
+ * The recovery-key equivalent of `deriveCredentials`.
+ *
+ * The recovery key is 256 bits of randomness the user is shown once, not a
+ * password — already too high-entropy for PBKDF2 to add anything, so it goes
+ * straight into HKDF as key material. Two outputs, same separation as above:
+ * a secret the server hashes and checks, and a key that never leaves here.
+ */
+export async function deriveRecoveryCredentials(
+  recoveryKey: Uint8Array,
+): Promise<DerivedCredentials> {
+  const material = await crypto.subtle.importKey(
+    'raw',
+    recoveryKey as BufferSource,
+    'HKDF',
+    false,
+    ['deriveBits'],
+  )
+  const authBits = await expand(material, RECOVERY_AUTH_INFO, 256)
+  const kekBits = await expand(material, RECOVERY_KEK_INFO, 256)
   const kek = await crypto.subtle.importKey('raw', kekBits, { name: 'AES-GCM' }, false, [
     'wrapKey',
     'unwrapKey',

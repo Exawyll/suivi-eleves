@@ -1,11 +1,12 @@
 import { useState } from 'react'
 import { LoginForm } from '@/components/auth/LoginForm'
+import { RecoverForm } from '@/components/auth/RecoverForm'
 import { SignupForm } from '@/components/auth/SignupForm'
 import { readLegacyCarnet } from '@/store/legacyCarnet'
 import { useAuthStore } from '@/store/useAuthStore'
 import styles from './AuthPage.module.css'
 
-type Mode = 'login' | 'signup'
+type Mode = 'login' | 'signup' | 'recover'
 
 /**
  * The whole app until an account is unlocked.
@@ -25,20 +26,36 @@ export const AuthPage = () => {
   const login = useAuthStore((state) => state.login)
   const unlockOffline = useAuthStore((state) => state.unlockOffline)
   const forgetAccount = useAuthStore((state) => state.forgetAccount)
+  const recoveryEmail = useAuthStore((state) => state.recoveryEmail)
+  const startRecovery = useAuthStore((state) => state.startRecovery)
+  const completeRecovery = useAuthStore((state) => state.completeRecovery)
+  const cancelRecovery = useAuthStore((state) => state.cancelRecovery)
 
   const [mode, setMode] = useState<Mode>('login')
   // Read once, on mount: adopting depends on what is on the device now, and
   // re-reading on every keystroke would be wasted work.
   const [hasCarnetToAdopt] = useState(() => readLegacyCarnet() !== null)
+  // "Locked" is a local vault with no key in memory, not "offline" — the
+  // device can be locked and fully online at once, which is exactly when
+  // recovering a forgotten password is possible. This is what lets "Mot de
+  // passe oublié ?" step out of the lock screen without forgetting the
+  // account first.
+  const [bypassLock, setBypassLock] = useState(false)
 
-  const locked = status === 'locked' && session !== null
+  const locked = status === 'locked' && session !== null && !bypassLock
 
   return (
     <div className={styles.page}>
       <div className={styles.header}>
         <div className={styles.wordmark}>Carnet</div>
         <div className={styles.tagline}>
-          {locked ? 'Déverrouiller' : mode === 'login' ? 'Connexion' : 'Créer un compte enseignant'}
+          {locked
+            ? 'Déverrouiller'
+            : mode === 'login'
+              ? 'Connexion'
+              : mode === 'recover'
+                ? 'Récupérer le compte'
+                : 'Créer un compte enseignant'}
         </div>
       </div>
 
@@ -59,6 +76,11 @@ export const AuthPage = () => {
             busyLabel="Déverrouillage…"
             switchPrompt="Ce n’est pas vous ?"
             switchLabel="Utiliser un autre compte"
+            onForgotPassword={() => {
+              clearError()
+              setBypassLock(true)
+              setMode('recover')
+            }}
           />
         </>
       ) : mode === 'login' ? (
@@ -70,6 +92,30 @@ export const AuthPage = () => {
           onSwitch={() => {
             clearError()
             setMode('signup')
+          }}
+          onForgotPassword={() => {
+            clearError()
+            setMode('recover')
+          }}
+        />
+      ) : mode === 'recover' ? (
+        <RecoverForm
+          busy={busy}
+          serverError={error}
+          onClearServerError={clearError}
+          recoveryEmail={recoveryEmail}
+          initialEmail={session?.email ?? ''}
+          onStart={(email, recoveryKey) => void startRecovery(email, recoveryKey)}
+          onComplete={(newPassword) => void completeRecovery(newPassword)}
+          onCancel={cancelRecovery}
+          onBackToLogin={() => {
+            cancelRecovery()
+            clearError()
+            // Undoes the lock bypass too: if a local vault is still known,
+            // this returns to "Déverrouiller" rather than a blank sign-in —
+            // the account was never actually forgotten.
+            setBypassLock(false)
+            setMode('login')
           }}
         />
       ) : (

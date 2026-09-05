@@ -1,0 +1,65 @@
+.intro {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--color-text-70);
+  margin: 0 0 14px;
+}
+
+.keyBox {
+  font-family: var(--font-mono, monospace);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  line-height: 1.6;
+  word-break: break-all;
+  padding: 14px 16px;
+  border: var(--border-ink);
+  border-radius: 14px;
+  background: var(--color-surface);
+  color: var(--color-text);
+  text-align: center;
+}
+
+.copy {
+  width: 100%;
+  box-sizing: border-box;
+  margin-top: 12px;
+  padding: 11px 16px;
+  border: var(--border-ink);
+  border-radius: 12px;
+  background: var(--color-surface-sunk);
+  font-family: var(--font-body);
+  font-weight: 800;
+  font-size: 13px;
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+.warning {
+  margin-top: 14px;
+  padding: 10px 12px;
+  border: var(--border-sand);
+  border-radius: 12px;
+  background: var(--color-highlight);
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--color-text-70);
+}
+
+.footer {
+  padding: 12px 18px calc(16px + env(safe-area-inset-bottom));
+}
+
+.acknowledge {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 13px 22px;
+  border-radius: 14px;
+  border: var(--border-ink);
+  background: var(--color-confirm);
+  color: var(--color-text);
+  font-family: var(--font-body);
+  font-weight: 800;
+  font-size: 14px;
+  cursor: pointer;
+}
