@@ -69,6 +69,38 @@ devtools and reload on a non-root route (e.g. `/classes/xyz`) — the service wo
 - Deleting a tag from the Tag Editor has no confirmation dialog, matching the mockup. Historical
   events referencing a deleted tag are never removed — they render a "Tag supprimé" ghost chip.
 
+## Import CSV (classes & élèves)
+
+Réglages → Établissements & classes → « Importer un fichier CSV (Pronote…) » ouvre
+`RosterImportSheet` (`src/components/classes/RosterImportSheet.tsx`), qui lit l'export standard
+d'un professeur — plusieurs classes dans un seul fichier — entièrement dans le navigateur (le
+fichier ne part jamais du poste). L'import « une seule classe » historique
+(`ClassImportSheet`, un simple fichier de noms) reste disponible par établissement pour un ajout
+ponctuel.
+
+### Mapping
+
+| Colonne du CSV                    | Modèle                    | Traitement                                                             |
+| ---------------------------------- | -------------------------- | ------------------------------------------------------------------------ |
+| `Élèves` (« NOM Prénom »)         | `Eleve.name`               | reformaté en « Prénom Nom » (convention des seeds), via `splitNomPrenom` — les tokens tout-majuscules de tête forment le nom de famille |
+| `Classe` (ex. `11`, `12`…)         | regroupement + `Classe.name` | chaque valeur distincte devient une classe ; le code brut sert de nom (renommable ensuite) |
+| tout le reste (Encouragement, Né(e) le, Sexe, E-mail, Entrée/Sortie, Tuteur, Cnx Ele./Resp., Options 1-3, Régime…) | —                           | ignoré, hors périmètre actuel du modèle                                  |
+
+`parseCsvRoster` + `groupRosterByClasse` (`src/utils/csv.ts`) font l'extraction et le regroupement ;
+`parseCsvStudentNames` reste dédié au format une-seule-classe.
+
+### Trois modes d'import
+
+- **Ajouter des élèves** (`addElevesToExistingClasses`) — chaque groupe est rattaché à la classe
+  existante de même nom dans l'établissement choisi ; un code sans correspondance est ignoré et
+  signalé, jamais silencieusement perdu.
+- **Ajouter des classes** (`addClassesFromRoster`) — une nouvelle classe par groupe, nommée d'après
+  son code CSV.
+- **Repartir de zéro** (`resetAndImportRoster`) — supprime établissements, classes, élèves et
+  événements existants (démo incluse) puis insère le fichier dans un nouvel établissement. Les tags
+  et catégories de comportement sont conservés : ce n'est pas une donnée de roster. Geste
+  destructif, protégé par une case à cocher de confirmation dans l'UI.
+
 ## Comptes et chiffrement
 
 Depuis la v2, un compte est obligatoire : l'écran d'authentification est toute l'application tant

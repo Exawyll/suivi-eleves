@@ -18,6 +18,7 @@ import {
   SEED_TAGS,
   SEED_TAG_CATEGORIES,
 } from '@/seed/seedData'
+import type { RosterGroup } from '@/utils/csv'
 import { resolveDefaultStorage } from '@/store/memoryStorage'
 import {
   nextStamp,
@@ -41,6 +42,12 @@ export interface LogEventInput {
   targets: EventTarget[]
   tagIds: Id[]
   noteText: string
+}
+
+export interface AddElevesToExistingClassesResult {
+  addedCount: number
+  /** Roster groups whose classe code matched no existing classe in the établissement — not inserted. */
+  unmatchedCodes: string[]
 }
 
 /**
@@ -82,6 +89,12 @@ export interface AppState extends SyncSlices {
   setActiveClasse: (id: Id) => void
   togglePrincipalClasse: (id: Id) => void
   renameClasse: (id: Id, name: string) => void
+  addElevesToExistingClasses: (
+    etablissementId: Id,
+    groups: RosterGroup[],
+  ) => AddElevesToExistingClassesResult
+  addClassesFromRoster: (etablissementId: Id, groups: RosterGroup[]) => Id[]
+  resetAndImportRoster: (etablissementName: string, groups: RosterGroup[]) => Id
 }
 
 type AppActions =
@@ -97,6 +110,9 @@ type AppActions =
   | 'setActiveClasse'
   | 'togglePrincipalClasse'
   | 'renameClasse'
+  | 'addElevesToExistingClasses'
+  | 'addClassesFromRoster'
+  | 'resetAndImportRoster'
 
 export type DomainState = Omit<AppState, AppActions>
 
@@ -453,6 +469,143 @@ export function createAppStore(
               ...touch(state, ['classe', id]),
             }
           })
+        },
+
+        /**
+         * "Ajout d'élèves" import mode: each roster group is matched against an
+         * existing classe in the établissement by exact name (the CSV's raw
+         * classe code). A group with no match is skipped and reported, rather
+         * than silently dropped or turned into a surprise new classe.
+         */
+        addElevesToExistingClasses: (etablissementId, groups) => {
+          const classesInEtab = get().classes.filter((c) => c.etablissementId === etablissementId)
+          const unmatchedCodes: string[] = []
+          const newEleves: Eleve[] = []
+
+          for (const group of groups) {
+            const classe = classesInEtab.find((c) => c.name === group.classeCode)
+            if (!classe) {
+              unmatchedCodes.push(group.classeCode)
+              continue
+            }
+            for (const rawName of group.eleveNames) {
+              const name = rawName.trim()
+              if (name === '') continue
+              newEleves.push({ id: generateId(), classeId: classe.id, name })
+            }
+          }
+
+          if (newEleves.length > 0) {
+            set((state) => ({
+              eleves: [...state.eleves, ...newEleves],
+              ...touch(state, ...newEleves.map(({ id }) => ['eleve', id] as const)),
+            }))
+          }
+
+          return { addedCount: newEleves.length, unmatchedCodes }
+        },
+
+        /**
+         * "Ajout de classes" import mode: one new classe per roster group,
+         * named after its raw CSV classe code, plus its students.
+         */
+        addClassesFromRoster: (etablissementId, groups) => {
+          if (!get().etablissements.some((e) => e.id === etablissementId)) return []
+
+          const newClasses: Classe[] = []
+          const newEleves: Eleve[] = []
+
+          for (const group of groups) {
+            const code = group.classeCode.trim()
+            if (code === '') continue
+            const classeId = generateId()
+            newClasses.push({ id: classeId, etablissementId, name: code, niveau: '' })
+            for (const rawName of group.eleveNames) {
+              const name = rawName.trim()
+              if (name === '') continue
+              newEleves.push({ id: generateId(), classeId, name })
+            }
+          }
+
+          if (newClasses.length === 0) return []
+
+          set((state) => ({
+            classes: [...state.classes, ...newClasses],
+            eleves: [...state.eleves, ...newEleves],
+            activeClasseId: newClasses[0]?.id ?? state.activeClasseId,
+            ...touch(
+              state,
+              ...newClasses.map(({ id }) => ['classe', id] as const),
+              ...newEleves.map(({ id }) => ['eleve', id] as const),
+              ['preference', PREFERENCE_ID],
+            ),
+          }))
+
+          return newClasses.map((c) => c.id)
+        },
+
+        /**
+         * "Repartir de zéro" import mode: wipes every établissement, classe,
+         * élève and event — démo data or real, it's all going up as tombstones
+         * so other devices drop it too — then inserts a fresh établissement
+         * with the imported classes and students. Tags and their categories
+         * are left alone: they're reusable behaviour configuration, not roster
+         * data, and there's no reason a fresh roster should lose them.
+         */
+        resetAndImportRoster: (etablissementName, groups) => {
+          const trimmedName = etablissementName.trim()
+          if (trimmedName === '') return ''
+
+          const etablissementId = generateId()
+          const newClasses: Classe[] = []
+          const newEleves: Eleve[] = []
+
+          for (const group of groups) {
+            const code = group.classeCode.trim()
+            if (code === '') continue
+            const classeId = generateId()
+            newClasses.push({ id: classeId, etablissementId, name: code, niveau: '' })
+            for (const rawName of group.eleveNames) {
+              const name = rawName.trim()
+              if (name === '') continue
+              newEleves.push({ id: generateId(), classeId, name })
+            }
+          }
+
+          set((state) => {
+            const buried = bury(
+              state,
+              ...state.etablissements.map(({ id }) => ['etablissement', id] as const),
+              ...state.classes.map(({ id }) => ['classe', id] as const),
+              ...state.eleves.map(({ id }) => ['eleve', id] as const),
+              ...state.events.map(({ id }) => ['event', id] as const),
+            )
+            const stateAfterBury: AppState = {
+              ...state,
+              syncMeta: buried.syncMeta,
+              tombstones: buried.tombstones,
+            }
+            const touched = touch(
+              stateAfterBury,
+              ['etablissement', etablissementId],
+              ...newClasses.map(({ id }) => ['classe', id] as const),
+              ...newEleves.map(({ id }) => ['eleve', id] as const),
+              ['preference', PREFERENCE_ID],
+            )
+
+            return {
+              etablissements: [{ id: etablissementId, name: trimmedName }],
+              classes: newClasses,
+              eleves: newEleves,
+              events: [],
+              activeClasseId: newClasses[0]?.id ?? null,
+              principalClasseId: null,
+              syncMeta: touched.syncMeta,
+              tombstones: buried.tombstones,
+            }
+          })
+
+          return etablissementId
         },
       }),
       {

@@ -4,6 +4,7 @@ import { useAppStore } from '@/store/useAppStore'
 import { selectClassesByEtablissement } from '@/store/selectors'
 import { BackHeader } from '@/components/ui/BackHeader'
 import { ClassImportSheet } from '@/components/classes/ClassImportSheet'
+import { RosterImportSheet } from '@/components/classes/RosterImportSheet'
 import styles from './EtablissementsPage.module.css'
 
 export function EtablissementsPage() {
@@ -15,6 +16,7 @@ export function EtablissementsPage() {
   const [isAdding, setIsAdding] = useState(false)
   const [newName, setNewName] = useState('')
   const [importTarget, setImportTarget] = useState<Id | null>(null)
+  const [isRosterImportOpen, setIsRosterImportOpen] = useState(false)
 
   const groups = selectClassesByEtablissement(etablissements, classes)
   const importTargetName = etablissements.find((e) => e.id === importTarget)?.name ?? ''
@@ -29,6 +31,14 @@ export function EtablissementsPage() {
   return (
     <div className={styles.page}>
       <BackHeader title="Établissements & classes" />
+
+      <button
+        type="button"
+        className={styles.importLink}
+        onClick={() => setIsRosterImportOpen(true)}
+      >
+        Importer un fichier CSV (Pronote…)
+      </button>
 
       {groups.map(({ etablissement, classes: etablissementClasses }) => (
         <div key={etablissement.id} className={styles.card}>
@@ -94,6 +104,11 @@ export function EtablissementsPage() {
         etablissementId={importTarget}
         etablissementName={importTargetName}
         onClose={() => setImportTarget(null)}
+      />
+
+      <RosterImportSheet
+        isOpen={isRosterImportOpen}
+        onClose={() => setIsRosterImportOpen(false)}
       />
     </div>
   )

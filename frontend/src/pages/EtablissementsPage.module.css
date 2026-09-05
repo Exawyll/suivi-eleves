@@ -105,3 +105,19 @@
   padding: 0;
   margin-top: 4px;
 }
+
+.importLink {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 11px 14px;
+  margin-bottom: 16px;
+  border: var(--border-ink);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-family: var(--font-body);
+  font-weight: 800;
+  font-size: 13px;
+  text-align: center;
+}

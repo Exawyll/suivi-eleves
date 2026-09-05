@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { parseCsvStudentNames } from '@/utils/csv'
+import {
+  groupRosterByClasse,
+  parseCsvRoster,
+  parseCsvStudentNames,
+  splitNomPrenom,
+} from '@/utils/csv'
 
 describe('parseCsvStudentNames', () => {
   it('reads a bare single-column list with no header', () => {
@@ -78,5 +83,82 @@ describe('parseCsvStudentNames', () => {
 
   it('returns an empty list for a header with no data rows', () => {
     expect(parseCsvStudentNames('Prénom;Nom')).toEqual([])
+  })
+})
+
+describe('splitNomPrenom', () => {
+  it('reorders a simple "NOM Prénom" cell', () => {
+    expect(splitNomPrenom('AMORRI Yara')).toBe('Yara Amorri')
+  })
+
+  it('keeps a double hyphenated surname together', () => {
+    expect(splitNomPrenom('BERNARD--ZAPATER Chloé')).toBe('Chloé Bernard--Zapater')
+  })
+
+  it('keeps a multi-word surname without a hyphen together', () => {
+    expect(splitNomPrenom('RAMOS DE OLIVEIRA Eva')).toBe('Eva Ramos De Oliveira')
+    expect(splitNomPrenom('REZIOUK GUYET Keo')).toBe('Keo Reziouk Guyet')
+  })
+
+  it('keeps a hyphenated surname of two capitalised words together', () => {
+    expect(splitNomPrenom('PIERRE-LOPES Lucas')).toBe('Lucas Pierre-Lopes')
+  })
+
+  it('falls back to nom-then-prénom when nothing is shouting', () => {
+    expect(splitNomPrenom('Dupont Marie')).toBe('Marie Dupont')
+  })
+
+  it('returns an empty string for a blank cell', () => {
+    expect(splitNomPrenom('  ')).toBe('')
+  })
+})
+
+describe('parseCsvRoster', () => {
+  it('extracts name and classe code from a Pronote-style export', () => {
+    const csv =
+      'Élèves;Classe\n"AMORRI Yara";"12"\n"BARADUC Clara";"11"\n"BORDES Gabin";"15"'
+
+    expect(parseCsvRoster(csv)).toEqual([
+      { name: 'Yara Amorri', classeCode: '12' },
+      { name: 'Clara Baraduc', classeCode: '11' },
+      { name: 'Gabin Bordes', classeCode: '15' },
+    ])
+  })
+
+  it('ignores unrelated columns', () => {
+    const csv =
+      'Élèves;Encouragement/Valorisation;Né(e) le;Sexe;Classe;Régime\n' +
+      '"AMORRI Yara";"";"23/10/2010";"Féminin";"12";"DEMI-PENSIONNAIRE"'
+
+    expect(parseCsvRoster(csv)).toEqual([{ name: 'Yara Amorri', classeCode: '12' }])
+  })
+
+  it('returns an empty list when the export has no Élèves+Classe header pair', () => {
+    expect(parseCsvRoster('Nom;Prénom\nHaddad;Lina')).toEqual([])
+  })
+
+  it('drops rows missing a name or a classe code', () => {
+    const csv = 'Élèves;Classe\n"AMORRI Yara";""\n"";"12"'
+
+    expect(parseCsvRoster(csv)).toEqual([])
+  })
+})
+
+describe('groupRosterByClasse', () => {
+  it('groups rows by classe code, in first-seen order', () => {
+    const groups = groupRosterByClasse([
+      { name: 'Yara Amorri', classeCode: '12' },
+      { name: 'Clara Baraduc', classeCode: '11' },
+      { name: 'Lucas Jin', classeCode: '12' },
+    ])
+
+    expect(groups).toEqual([
+      { classeCode: '12', eleveNames: ['Yara Amorri', 'Lucas Jin'] },
+      { classeCode: '11', eleveNames: ['Clara Baraduc'] },
+    ])
+  })
+
+  it('returns an empty list for no rows', () => {
+    expect(groupRosterByClasse([])).toEqual([])
   })
 })
