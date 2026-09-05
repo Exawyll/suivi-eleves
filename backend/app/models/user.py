@@ -31,6 +31,18 @@ class User(Base, TimestampMixin):
     kdf_iterations: Mapped[int] = mapped_column(Integer)
     wrapped_dek: Mapped[bytes] = mapped_column(LargeBinary)
     dek_nonce: Mapped[bytes] = mapped_column(LargeBinary)
+    # A second, independent wrapping of the same DEK, under a key derived from a
+    # high-entropy secret the user is shown once and asked to save — not from
+    # the password. Nullable: recovery is opt-in, and an account created before
+    # this existed simply has none yet. Losing both this and the password is
+    # still unrecoverable by design; this only removes the "only one".
+    recovery_auth_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    wrapped_dek_recovery: Mapped[bytes | None] = mapped_column(LargeBinary, nullable=True)
+    dek_nonce_recovery: Mapped[bytes | None] = mapped_column(LargeBinary, nullable=True)
+
+    @property
+    def recovery_enabled(self) -> bool:
+        return self.recovery_auth_hash is not None
 
 
 class RefreshToken(Base, TimestampMixin):

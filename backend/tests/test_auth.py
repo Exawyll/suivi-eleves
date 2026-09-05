@@ -16,7 +16,15 @@ KDF_SALT = base64.b64encode(b"s" * 16).decode()
 WRAPPED_DEK = base64.b64encode(b"w" * 48).decode()
 DEK_NONCE = base64.b64encode(b"n" * 12).decode()
 
+RECOVERY_SECRET = base64.b64encode(b"r" * 32).decode()
+OTHER_RECOVERY_SECRET = base64.b64encode(b"q" * 32).decode()
+WRAPPED_DEK_RECOVERY = base64.b64encode(b"v" * 48).decode()
+DEK_NONCE_RECOVERY = base64.b64encode(b"m" * 12).decode()
+NEW_WRAPPED_DEK_RECOVERY = base64.b64encode(b"z" * 48).decode()
+NEW_DEK_NONCE_RECOVERY = base64.b64encode(b"y" * 12).decode()
+
 WRONG_CREDENTIALS = "Adresse ou mot de passe incorrect."
+WRONG_RECOVERY_CREDENTIALS = "Adresse ou clé de récupération incorrecte."
 
 
 @pytest.fixture(autouse=True)
@@ -46,6 +54,37 @@ def signup(email: str = "prof@example.org", **overrides: object) -> dict[str, An
     assert response.status_code == 201, response.text
     body: dict[str, Any] = response.json()
     return body
+
+
+def setup_recovery(access_token: str, **overrides: object) -> None:
+    payload = {
+        "recoveryAuthSecret": RECOVERY_SECRET,
+        "wrappedDekRecovery": WRAPPED_DEK_RECOVERY,
+        "dekNonceRecovery": DEK_NONCE_RECOVERY,
+        **overrides,
+    }
+    response = client.post(
+        "/api/v1/auth/recovery/setup",
+        headers={"Authorization": f"Bearer {access_token}"},
+        json=payload,
+    )
+    assert response.status_code == 204, response.text
+
+
+def complete_recovery_payload(**overrides: object) -> dict[str, object]:
+    return {
+        "email": "prof@example.org",
+        "recoveryAuthSecret": RECOVERY_SECRET,
+        "newAuthSecret": OTHER_AUTH_SECRET,
+        "kdfSalt": KDF_SALT,
+        "kdfIterations": 600_000,
+        "wrappedDek": WRAPPED_DEK,
+        "dekNonce": DEK_NONCE,
+        "newRecoveryAuthSecret": OTHER_RECOVERY_SECRET,
+        "newWrappedDekRecovery": NEW_WRAPPED_DEK_RECOVERY,
+        "newDekNonceRecovery": NEW_DEK_NONCE_RECOVERY,
+        **overrides,
+    }
 
 
 @pytest.mark.usefixtures("clean_database")
@@ -269,3 +308,160 @@ def test_a_weakened_key_derivation_is_refused() -> None:
     response = client.post("/api/v1/auth/signup", json=signup_payload(kdfIterations=1_000))
 
     assert response.status_code == 422
+
+
+@pytest.mark.usefixtures("clean_database")
+def test_a_fresh_account_has_no_recovery_key_until_one_is_set_up() -> None:
+    session = signup()
+    assert session["user"]["recoveryEnabled"] is False
+
+    setup_recovery(session["accessToken"])
+
+    me = client.get(
+        "/api/v1/auth/me", headers={"Authorization": f"Bearer {session['accessToken']}"}
+    )
+    assert me.json()["user"]["recoveryEnabled"] is True
+
+
+@pytest.mark.usefixtures("clean_database")
+def test_setting_up_recovery_requires_a_session() -> None:
+    signup()
+
+    response = client.post(
+        "/api/v1/auth/recovery/setup",
+        json={
+            "recoveryAuthSecret": RECOVERY_SECRET,
+            "wrappedDekRecovery": WRAPPED_DEK_RECOVERY,
+            "dekNonceRecovery": DEK_NONCE_RECOVERY,
+        },
+    )
+
+    assert response.status_code == 401
+
+
+@pytest.mark.usefixtures("clean_database")
+def test_recovery_start_hands_back_the_wrapped_dek_for_the_right_key() -> None:
+    session = signup()
+    setup_recovery(session["accessToken"])
+
+    started = client.post(
+        "/api/v1/auth/recovery/start",
+        json={"email": "prof@example.org", "recoveryAuthSecret": RECOVERY_SECRET},
+    )
+
+    assert started.status_code == 200
+    assert started.json() == {
+        "wrappedDekRecovery": WRAPPED_DEK_RECOVERY,
+        "dekNonceRecovery": DEK_NONCE_RECOVERY,
+    }
+
+
+@pytest.mark.usefixtures("clean_database")
+def test_recovery_start_hides_a_wrong_key_behind_the_same_error_as_no_recovery_or_no_account() -> (
+    None
+):
+    session = signup()  # no recovery key configured yet
+
+    no_recovery_configured = client.post(
+        "/api/v1/auth/recovery/start",
+        json={"email": "prof@example.org", "recoveryAuthSecret": RECOVERY_SECRET},
+    )
+
+    setup_recovery(session["accessToken"])
+    wrong_key = client.post(
+        "/api/v1/auth/recovery/start",
+        json={"email": "prof@example.org", "recoveryAuthSecret": OTHER_RECOVERY_SECRET},
+    )
+    unknown_email = client.post(
+        "/api/v1/auth/recovery/start",
+        json={"email": "personne@example.org", "recoveryAuthSecret": RECOVERY_SECRET},
+    )
+
+    responses = [no_recovery_configured, wrong_key, unknown_email]
+    assert all(r.status_code == 401 for r in responses)
+    assert all(r.json() == {"detail": WRONG_RECOVERY_CREDENTIALS} for r in responses)
+
+
+@pytest.mark.usefixtures("clean_database")
+def test_completing_recovery_sets_the_new_password_and_rotates_the_recovery_key() -> None:
+    session = signup()
+    setup_recovery(session["accessToken"])
+
+    completed = client.post("/api/v1/auth/recovery/complete", json=complete_recovery_payload())
+
+    assert completed.status_code == 200
+    assert completed.json()["crypto"]["wrappedDek"] == WRAPPED_DEK
+
+    # The old password is dead, the new one works.
+    assert (
+        client.post(
+            "/api/v1/auth/login", json={"email": "prof@example.org", "authSecret": AUTH_SECRET}
+        ).status_code
+        == 401
+    )
+    assert (
+        client.post(
+            "/api/v1/auth/login",
+            json={"email": "prof@example.org", "authSecret": OTHER_AUTH_SECRET},
+        ).status_code
+        == 200
+    )
+    # Every session opened before the recovery is gone.
+    assert (
+        client.post(
+            "/api/v1/auth/refresh", json={"refreshToken": session["refreshToken"]}
+        ).status_code
+        == 401
+    )
+    # The recovery key that was just spent must not still unlock the account.
+    reused = client.post(
+        "/api/v1/auth/recovery/start",
+        json={"email": "prof@example.org", "recoveryAuthSecret": RECOVERY_SECRET},
+    )
+    assert reused.status_code == 401
+    # The freshly rotated one does.
+    rotated = client.post(
+        "/api/v1/auth/recovery/start",
+        json={"email": "prof@example.org", "recoveryAuthSecret": OTHER_RECOVERY_SECRET},
+    )
+    assert rotated.status_code == 200
+
+
+@pytest.mark.usefixtures("clean_database")
+def test_completing_recovery_requires_the_current_recovery_key() -> None:
+    session = signup()
+    setup_recovery(session["accessToken"])
+
+    response = client.post(
+        "/api/v1/auth/recovery/complete",
+        json=complete_recovery_payload(recoveryAuthSecret=OTHER_RECOVERY_SECRET),
+    )
+
+    assert response.status_code == 401
+    # Nothing changed: the original password still works.
+    assert (
+        client.post(
+            "/api/v1/auth/login", json={"email": "prof@example.org", "authSecret": AUTH_SECRET}
+        ).status_code
+        == 200
+    )
+
+
+@pytest.mark.usefixtures("clean_database")
+def test_repeated_recovery_failures_lock_the_account_out_without_touching_login() -> None:
+    session = signup()
+    setup_recovery(session["accessToken"])
+    wrong = {"email": "prof@example.org", "recoveryAuthSecret": OTHER_RECOVERY_SECRET}
+
+    for _ in range(login_throttle.max_failures):
+        assert client.post("/api/v1/auth/recovery/start", json=wrong).status_code == 401
+
+    assert client.post("/api/v1/auth/recovery/start", json=wrong).status_code == 429
+    # A teacher fumbling their recovery key can still sign in with the password
+    # they remember — the two counters are namespaced apart.
+    assert (
+        client.post(
+            "/api/v1/auth/login", json={"email": "prof@example.org", "authSecret": AUTH_SECRET}
+        ).status_code
+        == 200
+    )

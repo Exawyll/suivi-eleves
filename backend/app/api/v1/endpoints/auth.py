@@ -3,13 +3,17 @@ from fastapi import APIRouter, Query, status
 from app.api.deps import ClientIp, CurrentUser, DbSession
 from app.schemas.auth import (
     ChangePasswordRequest,
+    CompleteRecoveryRequest,
     CryptoMaterial,
     KdfParamsResponse,
     LoginRequest,
     MeResponse,
+    RecoveryMaterial,
     RefreshRequest,
     SessionResponse,
+    SetupRecoveryRequest,
     SignupRequest,
+    StartRecoveryRequest,
     UserResponse,
 )
 from app.services.auth_service import AuthService, IssuedSession
@@ -71,3 +75,30 @@ async def change_password(
 ) -> SessionResponse:
     """Re-wraps the data key under a new password and signs the other devices out."""
     return _session_response(await AuthService(db).change_password(user, payload))
+
+
+@router.post("/recovery/setup", status_code=status.HTTP_204_NO_CONTENT)
+async def setup_recovery(payload: SetupRecoveryRequest, user: CurrentUser, db: DbSession) -> None:
+    """Creates or replaces the recovery key. Requires being signed in already —
+    re-wrapping the DEK needs it unwrapped, which is exactly what a session
+    proves."""
+    await AuthService(db).setup_recovery(user, payload)
+
+
+@router.post("/recovery/start")
+async def start_recovery(
+    payload: StartRecoveryRequest, db: DbSession, ip: ClientIp
+) -> RecoveryMaterial:
+    """First half of a forgotten-password flow: proves the caller holds the
+    recovery key and hands back the wrapped DEK so it can be unwrapped
+    locally, before any new password is chosen."""
+    return await AuthService(db).start_recovery(payload, client_ip=ip)
+
+
+@router.post("/recovery/complete")
+async def complete_recovery(
+    payload: CompleteRecoveryRequest, db: DbSession, ip: ClientIp
+) -> SessionResponse:
+    """Second half: sets the new password and rotates the recovery key in the
+    same request, then signs every other device out."""
+    return _session_response(await AuthService(db).complete_recovery(payload, client_ip=ip))
