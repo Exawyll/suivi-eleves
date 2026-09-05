@@ -1,11 +1,12 @@
 import { useState } from 'react'
 import { LoginForm } from '@/components/auth/LoginForm'
+import { RecoverForm } from '@/components/auth/RecoverForm'
 import { SignupForm } from '@/components/auth/SignupForm'
 import { readLegacyCarnet } from '@/store/legacyCarnet'
 import { useAuthStore } from '@/store/useAuthStore'
 import styles from './AuthPage.module.css'
 
-type Mode = 'login' | 'signup'
+type Mode = 'login' | 'signup' | 'recover'
 
 /**
  * The whole app until an account is unlocked.
@@ -25,6 +26,10 @@ export const AuthPage = () => {
   const login = useAuthStore((state) => state.login)
   const unlockOffline = useAuthStore((state) => state.unlockOffline)
   const forgetAccount = useAuthStore((state) => state.forgetAccount)
+  const recoveryEmail = useAuthStore((state) => state.recoveryEmail)
+  const startRecovery = useAuthStore((state) => state.startRecovery)
+  const completeRecovery = useAuthStore((state) => state.completeRecovery)
+  const cancelRecovery = useAuthStore((state) => state.cancelRecovery)
 
   const [mode, setMode] = useState<Mode>('login')
   // Read once, on mount: adopting depends on what is on the device now, and
@@ -38,7 +43,13 @@ export const AuthPage = () => {
       <div className={styles.header}>
         <div className={styles.wordmark}>Carnet</div>
         <div className={styles.tagline}>
-          {locked ? 'Déverrouiller' : mode === 'login' ? 'Connexion' : 'Créer un compte enseignant'}
+          {locked
+            ? 'Déverrouiller'
+            : mode === 'login'
+              ? 'Connexion'
+              : mode === 'recover'
+                ? 'Récupérer le compte'
+                : 'Créer un compte enseignant'}
         </div>
       </div>
 
@@ -70,6 +81,25 @@ export const AuthPage = () => {
           onSwitch={() => {
             clearError()
             setMode('signup')
+          }}
+          onForgotPassword={() => {
+            clearError()
+            setMode('recover')
+          }}
+        />
+      ) : mode === 'recover' ? (
+        <RecoverForm
+          busy={busy}
+          serverError={error}
+          onClearServerError={clearError}
+          recoveryEmail={recoveryEmail}
+          onStart={(email, recoveryKey) => void startRecovery(email, recoveryKey)}
+          onComplete={(newPassword) => void completeRecovery(newPassword)}
+          onCancel={cancelRecovery}
+          onBackToLogin={() => {
+            cancelRecovery()
+            clearError()
+            setMode('login')
           }}
         />
       ) : (

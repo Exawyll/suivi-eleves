@@ -18,6 +18,9 @@ interface LoginFormProps {
   busyLabel?: string
   switchPrompt?: string
   switchLabel?: string
+  /** Absent on the offline unlock screen: recovering an account needs the
+   * network, and that screen exists specifically for when there isn't any. */
+  onForgotPassword?: () => void
 }
 
 export const LoginForm = ({
@@ -31,6 +34,7 @@ export const LoginForm = ({
   busyLabel = 'Connexion…',
   switchPrompt = 'Pas encore de compte ?',
   switchLabel = 'Créer un compte',
+  onForgotPassword,
 }: LoginFormProps) => {
   const [email, setEmail] = useState(lockedEmail ?? '')
   const [password, setPassword] = useState('')
@@ -94,6 +98,14 @@ export const LoginForm = ({
       {error !== null && (
         <div className={styles.error} role="alert">
           {error}
+        </div>
+      )}
+
+      {onForgotPassword !== undefined && (
+        <div className={styles.forgotPassword}>
+          <button type="button" className={styles.switchAction} onClick={onForgotPassword}>
+            Mot de passe oublié ?
+          </button>
         </div>
       )}
 

@@ -17,6 +17,7 @@ export interface StoredSession {
   email: string
   firstName: string
   lastName: string
+  recoveryEnabled: boolean
   kdfSalt: string
   kdfIterations: number
   wrappedDek: string
