@@ -104,6 +104,50 @@ describe('useAppStore: logEvent', () => {
   })
 })
 
+describe('useAppStore: editing the history', () => {
+  function firstNote(store: ReturnType<typeof createAppStore>) {
+    const note = store.getState().events.find((e) => e.content.type === 'note')
+    if (!note) throw new Error('expected a seed note')
+    return note
+  }
+
+  it('updateNote rewrites the text and keeps the original date', () => {
+    const store = createAppStore(createMemoryStorage())
+    const note = firstNote(store)
+
+    store.getState().updateNote(note.id, '  Texte corrigé  ')
+
+    const updated = store.getState().events.find((e) => e.id === note.id)
+    expect(updated?.content).toEqual({ type: 'note', text: 'Texte corrigé' })
+    expect(updated?.createdAt).toBe(note.createdAt)
+    expect(updated?.dateLabel).toBe(note.dateLabel)
+  })
+
+  it('updateNote ignores an empty text, a tag event and an unknown id', () => {
+    const store = createAppStore(createMemoryStorage())
+    const note = firstNote(store)
+    const tagEvent = store.getState().events.find((e) => e.content.type === 'tag')
+    const before = store.getState().events
+
+    store.getState().updateNote(note.id, '   ')
+    store.getState().updateNote(tagEvent?.id ?? '', 'Pas une note')
+    store.getState().updateNote('does-not-exist', 'Peu importe')
+
+    expect(store.getState().events).toBe(before)
+  })
+
+  it('deleteEvent removes only that event', () => {
+    const store = createAppStore(createMemoryStorage())
+    const note = firstNote(store)
+    const before = store.getState().events.length
+
+    store.getState().deleteEvent(note.id)
+
+    expect(store.getState().events.length).toBe(before - 1)
+    expect(store.getState().events.some((e) => e.id === note.id)).toBe(false)
+  })
+})
+
 describe('useAppStore: tag categories', () => {
   it('creates a new category and returns its id', () => {
     const store = createAppStore(createMemoryStorage())
