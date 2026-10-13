@@ -7,6 +7,7 @@ import {
 } from '@/store/selectors'
 import { BackHeader } from '@/components/ui/BackHeader'
 import { TagChip, GhostTagChip } from '@/components/ui/TagChip'
+import { EditableEvent } from '@/components/notes/EditableEvent'
 import styles from './DossierPage.module.css'
 
 export function DossierPage() {
@@ -38,16 +39,25 @@ export function DossierPage() {
       {featuredNotes.length > 0 && (
         <div className={styles.notesSection}>
           <div className={styles.sectionLabel}>Notes libres</div>
-          {featuredNotes.map((note) =>
-            note.content.type === 'note' ? (
-              <div key={note.id} className={styles.featuredNote}>
-                <div className={styles.featuredNoteText}>« {note.content.text} »</div>
-                <div className={styles.featuredNoteMeta}>
-                  {note.dateLabel} · {note.timeLabel}
-                </div>
-              </div>
-            ) : null,
-          )}
+          {featuredNotes.map((note) => {
+            if (note.content.type !== 'note') return null
+            const { text } = note.content
+            return (
+              <EditableEvent key={note.id} event={note}>
+                {(actions) => (
+                  <div className={styles.featuredNote}>
+                    <div className={styles.featuredNoteText}>« {text} »</div>
+                    <div className={styles.featuredNoteFooter}>
+                      <span className={styles.featuredNoteMeta}>
+                        {note.dateLabel} · {note.timeLabel}
+                      </span>
+                      {actions}
+                    </div>
+                  </div>
+                )}
+              </EditableEvent>
+            )
+          })}
           <div className={styles.divider} />
         </div>
       )}
@@ -57,14 +67,19 @@ export function DossierPage() {
         <div key={group.label} className={styles.dateGroup}>
           <div className={styles.dateGroupLabel}>{group.label}</div>
           {group.items.map((item) => (
-            <div key={item.id} className={styles.historyItem}>
-              {item.content.type === 'tag' ? (
-                <HistoryTagChip tagId={item.content.tagId} />
-              ) : (
-                <span className={styles.historyNote}>« {item.content.text} »</span>
+            <EditableEvent key={item.id} event={item}>
+              {(actions) => (
+                <div className={styles.historyItem}>
+                  {item.content.type === 'tag' ? (
+                    <HistoryTagChip tagId={item.content.tagId} />
+                  ) : (
+                    <span className={styles.historyNote}>« {item.content.text} »</span>
+                  )}
+                  <span className={styles.historyTime}>{item.timeLabel}</span>
+                  {actions}
+                </div>
               )}
-              <span className={styles.historyTime}>{item.timeLabel}</span>
-            </div>
+            </EditableEvent>
           ))}
         </div>
       ))}
