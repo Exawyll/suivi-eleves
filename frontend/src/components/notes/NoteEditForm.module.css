@@ -1,0 +1,49 @@
+.form {
+  margin: 8px 0;
+}
+
+.textarea {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 72px;
+  padding: 10px 12px;
+  border: var(--border-ink);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  font-family: var(--font-body);
+  font-size: 13px;
+  resize: vertical;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 6px;
+}
+
+.cancelButton {
+  padding: 7px 12px;
+  border-radius: 10px;
+  border: var(--border-sand);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-family: var(--font-body);
+  font-weight: 800;
+  font-size: 12px;
+}
+
+.saveButton {
+  padding: 7px 12px;
+  border-radius: 10px;
+  border: 2px solid var(--color-confirm);
+  background: var(--color-confirm);
+  color: var(--color-text);
+  font-family: var(--font-body);
+  font-weight: 800;
+  font-size: 12px;
+}
+
+.saveButton:disabled {
+  opacity: 0.5;
+}

@@ -104,6 +104,50 @@ describe('useAppStore: logEvent', () => {
   })
 })
 
+describe('useAppStore: editing the history', () => {
+  function firstNote(store: ReturnType<typeof createAppStore>) {
+    const note = store.getState().events.find((e) => e.content.type === 'note')
+    if (!note) throw new Error('expected a seed note')
+    return note
+  }
+
+  it('updateNote rewrites the text and keeps the original date', () => {
+    const store = createAppStore(createMemoryStorage())
+    const note = firstNote(store)
+
+    store.getState().updateNote(note.id, '  Texte corrigé  ')
+
+    const updated = store.getState().events.find((e) => e.id === note.id)
+    expect(updated?.content).toEqual({ type: 'note', text: 'Texte corrigé' })
+    expect(updated?.createdAt).toBe(note.createdAt)
+    expect(updated?.dateLabel).toBe(note.dateLabel)
+  })
+
+  it('updateNote ignores an empty text, a tag event and an unknown id', () => {
+    const store = createAppStore(createMemoryStorage())
+    const note = firstNote(store)
+    const tagEvent = store.getState().events.find((e) => e.content.type === 'tag')
+    const before = store.getState().events
+
+    store.getState().updateNote(note.id, '   ')
+    store.getState().updateNote(tagEvent?.id ?? '', 'Pas une note')
+    store.getState().updateNote('does-not-exist', 'Peu importe')
+
+    expect(store.getState().events).toBe(before)
+  })
+
+  it('deleteEvent removes only that event', () => {
+    const store = createAppStore(createMemoryStorage())
+    const note = firstNote(store)
+    const before = store.getState().events.length
+
+    store.getState().deleteEvent(note.id)
+
+    expect(store.getState().events.length).toBe(before - 1)
+    expect(store.getState().events.some((e) => e.id === note.id)).toBe(false)
+  })
+})
+
 describe('useAppStore: tag categories', () => {
   it('creates a new category and returns its id', () => {
     const store = createAppStore(createMemoryStorage())
@@ -306,6 +350,95 @@ describe('useAppStore: classes', () => {
     const reloaded = createAppStore(storage)
     expect(reloaded.getState().activeClasseId).toBe(second.id)
     expect(reloaded.getState().principalClasseId).toBe(second.id)
+  })
+})
+
+describe('useAppStore: classe deletion', () => {
+  it('deleteClasse removes the classe, its élèves and every event about them', () => {
+    const store = createAppStore(createMemoryStorage())
+    const doomedEleveIds = new Set(
+      store
+        .getState()
+        .eleves.filter((e) => e.classeId === 'c1')
+        .map((e) => e.id),
+    )
+    const otherEvents = store
+      .getState()
+      .events.filter((e) =>
+        e.target.kind === 'classe'
+          ? e.target.classeId !== 'c1'
+          : !doomedEleveIds.has(e.target.eleveId),
+      )
+
+    store.getState().deleteClasse('c1')
+
+    const state = store.getState()
+    expect(state.classes.map((c) => c.id)).toEqual(['c2', 'c3'])
+    expect(state.eleves.some((e) => e.classeId === 'c1')).toBe(false)
+    expect(state.events).toEqual(otherEvents)
+  })
+
+  it('deleteClasse leaves the other classes and their élèves untouched', () => {
+    const store = createAppStore(createMemoryStorage())
+    const before = store.getState().eleves.filter((e) => e.classeId !== 'c1')
+
+    store.getState().deleteClasse('c1')
+
+    expect(store.getState().eleves).toEqual(before)
+  })
+
+  it('deleteClasse stops pointing at the classe it removes', () => {
+    const store = createAppStore(createMemoryStorage())
+    store.getState().setActiveClasse('c2')
+    store.getState().togglePrincipalClasse('c2')
+
+    store.getState().deleteClasse('c2')
+
+    expect(store.getState().activeClasseId).toBeNull()
+    expect(store.getState().principalClasseId).toBeNull()
+  })
+
+  it('deleteClasse keeps the open and pinned classe when another one goes', () => {
+    const store = createAppStore(createMemoryStorage())
+    store.getState().setActiveClasse('c2')
+    store.getState().togglePrincipalClasse('c2')
+
+    store.getState().deleteClasse('c3')
+
+    expect(store.getState().activeClasseId).toBe('c2')
+    expect(store.getState().principalClasseId).toBe('c2')
+  })
+
+  it('deleteClasse ignores an unknown classe', () => {
+    const store = createAppStore(createMemoryStorage())
+    const before = store.getState()
+
+    store.getState().deleteClasse('does-not-exist')
+
+    expect(store.getState().classes).toBe(before.classes)
+    expect(store.getState().tombstones).toBe(before.tombstones)
+  })
+})
+
+describe('useAppStore: établissement rename', () => {
+  it('renameEtablissement trims the new name', () => {
+    const store = createAppStore(createMemoryStorage())
+
+    store.getState().renameEtablissement('e1', '  Collège Jean Moulin  ')
+
+    expect(store.getState().etablissements.find((e) => e.id === 'e1')?.name).toBe(
+      'Collège Jean Moulin',
+    )
+  })
+
+  it('renameEtablissement ignores an empty name or an unknown établissement', () => {
+    const store = createAppStore(createMemoryStorage())
+    const before = store.getState().etablissements
+
+    store.getState().renameEtablissement('e1', '   ')
+    store.getState().renameEtablissement('does-not-exist', 'Peu importe')
+
+    expect(store.getState().etablissements).toBe(before)
   })
 })
 

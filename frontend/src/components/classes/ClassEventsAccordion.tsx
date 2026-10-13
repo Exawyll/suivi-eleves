@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { EventItem } from '@/types/domain'
+import { EditableEvent } from '@/components/notes/EditableEvent'
 import styles from './ClassEventsAccordion.module.css'
 
 interface ClassEventsAccordionProps {
@@ -43,13 +44,21 @@ export function ClassEventsAccordion({ notes }: ClassEventsAccordionProps) {
 
 function ClassNote({ note }: { note: EventItem }) {
   if (note.content.type !== 'note') return null
+  const { text } = note.content
 
   return (
-    <div className={styles.note}>
-      <div className={styles.noteText}>« {note.content.text} »</div>
-      <div className={styles.noteMeta}>
-        {note.dateLabel} · {note.timeLabel}
-      </div>
-    </div>
+    <EditableEvent event={note}>
+      {(actions) => (
+        <div className={styles.note}>
+          <div className={styles.noteBody}>
+            <div className={styles.noteText}>« {text} »</div>
+            <div className={styles.noteMeta}>
+              {note.dateLabel} · {note.timeLabel}
+            </div>
+          </div>
+          {actions}
+        </div>
+      )}
+    </EditableEvent>
   )
 }

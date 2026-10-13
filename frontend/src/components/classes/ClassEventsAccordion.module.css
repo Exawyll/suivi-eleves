@@ -11,8 +11,16 @@
 }
 
 .note {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   padding: 10px 0;
   border-bottom: var(--divider-dashed);
+}
+
+.noteBody {
+  flex: 1;
+  min-width: 0;
 }
 
 .noteText {

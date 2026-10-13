@@ -1,0 +1,41 @@
+.row {
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  border: 2px solid var(--color-danger);
+  margin: 8px 0;
+}
+
+.text {
+  font-size: 13px;
+  font-weight: 700;
+  margin: 0 0 8px;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.cancelButton {
+  padding: 7px 12px;
+  border-radius: 10px;
+  border: var(--border-sand);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-family: var(--font-body);
+  font-weight: 800;
+  font-size: 12px;
+}
+
+.deleteButton {
+  padding: 7px 12px;
+  border-radius: 10px;
+  border: 2px solid var(--color-danger);
+  background: var(--color-danger);
+  color: #fff;
+  font-family: var(--font-body);
+  font-weight: 800;
+  font-size: 12px;
+}

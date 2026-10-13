@@ -96,6 +96,8 @@ export interface AppState extends SyncSlices {
   principalClasseId: Id | null
 
   logEvent: (input: LogEventInput) => void
+  updateNote: (id: Id, text: string) => void
+  deleteEvent: (id: Id) => void
   createTagCategory: (name: string) => Id
   renameTagCategory: (id: Id, name: string) => void
   deleteTagCategory: (id: Id) => void
@@ -103,10 +105,12 @@ export interface AppState extends SyncSlices {
   updateTag: (id: Id, patch: Partial<Omit<Tag, 'id'>>) => void
   deleteTag: (id: Id) => void
   createEtablissement: (name: string) => Id
+  renameEtablissement: (id: Id, name: string) => void
   createClasseWithEleves: (input: CreateClasseInput) => Id
   setActiveClasse: (id: Id) => void
   togglePrincipalClasse: (id: Id) => void
   renameClasse: (id: Id, name: string) => void
+  deleteClasse: (id: Id) => void
   addElevesToExistingClasses: (
     etablissementId: Id,
     groups: RosterGroup[],
@@ -120,6 +124,8 @@ export interface AppState extends SyncSlices {
 
 type AppActions =
   | 'logEvent'
+  | 'updateNote'
+  | 'deleteEvent'
   | 'createTagCategory'
   | 'renameTagCategory'
   | 'deleteTagCategory'
@@ -127,10 +133,12 @@ type AppActions =
   | 'updateTag'
   | 'deleteTag'
   | 'createEtablissement'
+  | 'renameEtablissement'
   | 'createClasseWithEleves'
   | 'setActiveClasse'
   | 'togglePrincipalClasse'
   | 'renameClasse'
+  | 'deleteClasse'
   | 'addElevesToExistingClasses'
   | 'addClassesFromRoster'
   | 'resetAndImportRoster'
@@ -322,6 +330,37 @@ export function createAppStore(
           }))
         },
 
+        /**
+         * Rewrites a free-text note. The note keeps its original date: it
+         * records when the thing happened, not when its wording was fixed.
+         * Emptying a note is not a way to delete it — `deleteEvent` is.
+         */
+        updateNote: (id, text) => {
+          const trimmed = text.trim()
+          if (trimmed === '') return
+          set((state) => {
+            const current = state.events.find((e) => e.id === id)
+            if (current?.content.type !== 'note' || current.content.text === trimmed) return {}
+            return {
+              events: state.events.map((e) =>
+                e.id === id ? { ...e, content: { type: 'note', text: trimmed } } : e,
+              ),
+              ...touch(state, ['event', id]),
+            }
+          })
+        },
+
+        /** Removes one entry from a history — a note or a tag logged by mistake. */
+        deleteEvent: (id) => {
+          set((state) => {
+            if (!state.events.some((e) => e.id === id)) return {}
+            return {
+              events: state.events.filter((e) => e.id !== id),
+              ...bury(state, ['event', id]),
+            }
+          })
+        },
+
         createTagCategory: (name) => {
           const trimmed = name.trim()
           if (trimmed === '') return ''
@@ -420,6 +459,22 @@ export function createAppStore(
           return id
         },
 
+        renameEtablissement: (id, name) => {
+          const trimmed = name.trim()
+          if (trimmed === '') return
+          set((state) => {
+            const current = state.etablissements.find((e) => e.id === id)
+            // Same reasoning as `renameClasse`: an unchanged name must not write.
+            if (!current || current.name === trimmed) return {}
+            return {
+              etablissements: state.etablissements.map((e) =>
+                e.id === id ? { ...e, name: trimmed } : e,
+              ),
+              ...touch(state, ['etablissement', id]),
+            }
+          })
+        },
+
         /**
          * Creates the classe and its students in one write, then opens it: the
          * teacher has just imported a roster and wants to see it.
@@ -488,6 +543,49 @@ export function createAppStore(
             return {
               classes: state.classes.map((c) => (c.id === id ? { ...c, name: trimmed } : c)),
               ...touch(state, ['classe', id]),
+            }
+          })
+        },
+
+        /**
+         * Deletes a classe for good, with everything that only made sense
+         * through it: its students, and every event logged against the classe
+         * or one of them. Unlike a deleted tag, nothing is left to render a
+         * ghost of — the dossier the history belonged to is gone too.
+         */
+        deleteClasse: (id) => {
+          set((state) => {
+            if (!state.classes.some((c) => c.id === id)) return {}
+            const eleveIds = new Set(state.eleves.filter((e) => e.classeId === id).map((e) => e.id))
+            const isDoomed = ({ target }: EventItem) =>
+              target.kind === 'classe' ? target.classeId === id : eleveIds.has(target.eleveId)
+            const doomedEvents = state.events.filter(isDoomed)
+            const clearsActive = state.activeClasseId === id
+            const clearsPrincipal = state.principalClasseId === id
+
+            // Every child needs its own tombstone: a device that only hears
+            // about the classe would keep its students and their history.
+            const buried = bury(
+              state,
+              ['classe', id],
+              ...[...eleveIds].map((eleveId) => ['eleve', eleveId] as const),
+              ...doomedEvents.map(({ id: eventId }) => ['event', eventId] as const),
+            )
+            // Pointing away from the classe changes the preference record,
+            // which is updated rather than deleted.
+            const repointed =
+              clearsActive || clearsPrincipal
+                ? touch({ ...state, ...buried }, ['preference', PREFERENCE_ID])
+                : {}
+
+            return {
+              classes: state.classes.filter((c) => c.id !== id),
+              eleves: state.eleves.filter((e) => !eleveIds.has(e.id)),
+              events: state.events.filter((event) => !isDoomed(event)),
+              ...(clearsActive ? { activeClasseId: null } : {}),
+              ...(clearsPrincipal ? { principalClasseId: null } : {}),
+              ...buried,
+              ...repointed,
             }
           })
         },
