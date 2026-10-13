@@ -1,0 +1,35 @@
+/* Above the sheets: an update matters more than whatever is open. */
+.banner {
+  position: fixed;
+  top: calc(env(safe-area-inset-top) + 10px);
+  left: 16px;
+  right: 16px;
+  z-index: 70;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px 10px 14px;
+  border-radius: var(--radius-lg);
+  border: var(--border-ink);
+  background: var(--color-highlight);
+  box-shadow: var(--shadow-card);
+}
+
+.text {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.button {
+  padding: 7px 12px;
+  flex-shrink: 0;
+  border-radius: 10px;
+  border: 2px solid var(--color-confirm);
+  background: var(--color-confirm);
+  color: var(--color-text);
+  font-family: var(--font-body);
+  font-weight: 800;
+  font-size: 12px;
+}
