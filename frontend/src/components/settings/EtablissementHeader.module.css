@@ -1,0 +1,20 @@
+.row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.name {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 19px;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.renameField {
+  font-size: 19px;
+}

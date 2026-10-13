@@ -1,0 +1,33 @@
+.row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 0;
+  border-bottom: var(--divider-dashed);
+}
+
+.text {
+  flex: 1;
+  min-width: 0;
+}
+
+.name {
+  font-size: 14px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.meta {
+  font-size: 11px;
+  color: var(--color-text-55);
+  margin-top: 1px;
+}
+
+.actions {
+  display: flex;
+  gap: 6px;
+}
+
+.renameField {
+  font-size: 14px;
+}

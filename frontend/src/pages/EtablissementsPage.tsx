@@ -5,6 +5,8 @@ import { selectClassesByEtablissement } from '@/store/selectors'
 import { BackHeader } from '@/components/ui/BackHeader'
 import { ClassImportSheet } from '@/components/classes/ClassImportSheet'
 import { RosterImportSheet } from '@/components/classes/RosterImportSheet'
+import { ClasseSettingsRow } from '@/components/settings/ClasseSettingsRow'
+import { EtablissementHeader } from '@/components/settings/EtablissementHeader'
 import styles from './EtablissementsPage.module.css'
 
 export function EtablissementsPage() {
@@ -12,6 +14,9 @@ export function EtablissementsPage() {
   const classes = useAppStore((s) => s.classes)
   const eleves = useAppStore((s) => s.eleves)
   const createEtablissement = useAppStore((s) => s.createEtablissement)
+  const renameEtablissement = useAppStore((s) => s.renameEtablissement)
+  const renameClasse = useAppStore((s) => s.renameClasse)
+  const deleteClasse = useAppStore((s) => s.deleteClasse)
 
   const [isAdding, setIsAdding] = useState(false)
   const [newName, setNewName] = useState('')
@@ -42,20 +47,22 @@ export function EtablissementsPage() {
 
       {groups.map(({ etablissement, classes: etablissementClasses }) => (
         <div key={etablissement.id} className={styles.card}>
-          <h2 className={styles.etablissementName}>{etablissement.name}</h2>
+          <EtablissementHeader
+            name={etablissement.name}
+            onRename={(name) => renameEtablissement(etablissement.id, name)}
+          />
 
           {etablissementClasses.length === 0 ? (
             <p className={styles.noClasses}>Aucune classe importée.</p>
           ) : (
             etablissementClasses.map((classe) => (
-              <div key={classe.id} className={styles.classeRow}>
-                <div>
-                  <div className={styles.classeName}>{classe.name}</div>
-                  <div className={styles.classeMeta}>
-                    {eleves.filter((e) => e.classeId === classe.id).length} élève(s)
-                  </div>
-                </div>
-              </div>
+              <ClasseSettingsRow
+                key={classe.id}
+                classe={classe}
+                eleveCount={eleves.filter((e) => e.classeId === classe.id).length}
+                onRename={(name) => renameClasse(classe.id, name)}
+                onDelete={() => deleteClasse(classe.id)}
+              />
             ))
           )}
 
