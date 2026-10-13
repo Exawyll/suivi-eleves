@@ -7,6 +7,8 @@ interface InlineRenameFieldProps {
   /** Called with the edited text on blur or Enter. An empty value is the caller's to reject. */
   onCommit: (value: string) => void
   onCancel: () => void
+  /** Extra class for the field, to size it to the title it stands in for. */
+  className?: string
 }
 
 /**
@@ -18,6 +20,7 @@ export function InlineRenameField({
   ariaLabel,
   onCommit,
   onCancel,
+  className,
 }: InlineRenameFieldProps) {
   const [draft, setDraft] = useState(initialValue)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -31,7 +34,7 @@ export function InlineRenameField({
   return (
     <input
       ref={inputRef}
-      className={styles.field}
+      className={className ? `${styles.field} ${className}` : styles.field}
       value={draft}
       aria-label={ariaLabel}
       onChange={(event) => setDraft(event.target.value)}
