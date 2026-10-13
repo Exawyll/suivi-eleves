@@ -133,6 +133,46 @@ describe('suppressions', () => {
     )
   })
 
+  it('pose une pierre tombale sur la classe supprimée, ses élèves et leurs évènements', () => {
+    const store = freshStore()
+    const eleveIds = store
+      .getState()
+      .eleves.filter((e) => e.classeId === 'c1')
+      .map((e) => e.id)
+    const eventIds = store
+      .getState()
+      .events.filter((e) =>
+        e.target.kind === 'classe'
+          ? e.target.classeId === 'c1'
+          : eleveIds.includes(e.target.eleveId),
+      )
+      .map((e) => e.id)
+    expect(eventIds.length).toBeGreaterThan(0)
+    store.setState({ syncMeta: {}, tombstones: {} })
+
+    store.getState().deleteClasse('c1')
+
+    expect(Object.keys(store.getState().tombstones).sort()).toEqual(
+      [
+        syncKey('classe', 'c1'),
+        ...eleveIds.map((id) => syncKey('eleve', id)),
+        ...eventIds.map((id) => syncKey('event', id)),
+      ].sort(),
+    )
+  })
+
+  it('ne touche aux préférences que si la classe supprimée était ouverte ou épinglée', () => {
+    const store = freshStore()
+    store.getState().setActiveClasse('c1')
+    store.setState({ syncMeta: {}, tombstones: {} })
+
+    store.getState().deleteClasse('c3')
+    expect(store.getState().syncMeta[syncKey('preference', PREFERENCE_ID)]).toBeUndefined()
+
+    store.getState().deleteClasse('c1')
+    expect(store.getState().syncMeta[syncKey('preference', PREFERENCE_ID)]?.dirty).toBe(true)
+  })
+
   it('ne pose pas de pierre tombale sur un tag qui n’existe pas', () => {
     const store = freshStore()
     store.setState({ syncMeta: {}, tombstones: {} })
