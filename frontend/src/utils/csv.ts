@@ -110,8 +110,11 @@ const HEADER_HINTS = ['nom', 'prenom', 'eleve']
  * Deliberately forgiving, because the file comes from whatever the school's
  * software produced: the delimiter is detected (`;` or `,`), a header row is
  * optional, and separate first-name/last-name columns are recombined when the
- * header names them. Failing that, every column on the row is joined — a
- * single-column list of full names is the common case.
+ * header names them. A Pronote export has neither, only an `Élèves` column
+ * holding "NOM Prénom": that column alone is kept and reordered. Every other
+ * column (birth date, email, options…) is ignored — the app stores names only.
+ * Without a header, the columns of each row are joined, since a single-column
+ * list of full names is the common case.
  *
  * Runs entirely in the browser: the file is never uploaded.
  */
@@ -133,11 +136,13 @@ export function parseCsvStudentNames(text: string): string[] {
 
   let nomIndex = -1
   let prenomIndex = -1
+  let eleveIndex = -1
 
   if (hasHeader) {
     // `nom` is matched exactly so it can't swallow the `prenom` column.
     nomIndex = header.findIndex((cell) => cell === 'nom' || cell.includes('nom de famille'))
     prenomIndex = header.findIndex((cell) => cell.includes('prenom'))
+    eleveIndex = header.findIndex((cell) => cell.includes('eleve'))
     rows = rows.slice(1)
   }
 
@@ -148,6 +153,12 @@ export function parseCsvStudentNames(text: string): string[] {
         name = `${cols[prenomIndex] ?? ''} ${cols[nomIndex] ?? ''}`
       } else if (nomIndex >= 0) {
         name = cols[nomIndex] ?? ''
+      } else if (eleveIndex >= 0) {
+        name = splitNomPrenom(cols[eleveIndex] ?? '')
+      } else if (hasHeader) {
+        // A header names columns we don't know: joining them would glue every
+        // field of the export into the name, so trust the first one only.
+        name = cols[0] ?? ''
       } else {
         name = cols.join(' ')
       }

@@ -56,9 +56,21 @@ describe('parseCsvStudentNames', () => {
     expect(parseCsvStudentNames('"  Lina   Haddad  "')).toEqual(['Lina Haddad'])
   })
 
-  it('joins every column when the header names no usable column', () => {
-    // Header detected via "élève", but neither nom nor prénom is present.
-    expect(parseCsvStudentNames('Élève;Classe\nLina Haddad;5e B')).toEqual(['Lina Haddad 5e B'])
+  it('keeps only the Élèves column of a Pronote export, reordered as Prénom Nom', () => {
+    const csv = [
+      '\uFEFFÉlèves;Encouragement/Valorisation;Né(e) le;Sexe;Adresse E-mail;Classe;Entrée;Sortie;;Tuteur;Cnx Ele.;Cnx Resp.;Option 1;Option 2;Option 3;Autres options;Régime',
+      '"AMORRI Yara";"";"23/10/2010";"Féminin";"";"12";01/09/2026;;"";"";"04/09/2026";"04/09/2026";"ANGLAIS LV1";"ESPAGNOL LV2";"MATHEMATIQUES";"PHYSIQUE-CHIMIE, SCIENCES VIE & TERRE";"DEMI-PENSIONNAIRE DANS L\'ETABLISSEMENT"',
+      '"BARADUC Clara";"";"28/03/2010";"Féminin";"julie@example.com";"11";01/09/2026;;"";"";"";"";"ANGLAIS LV1";"ESPAGNOL LV2";"HUMAN.LITTER.PHILO.";"SCIENCES VIE & TERRE, SC. ECONO.& SOCIALES";"DEMI-PENSIONNAIRE DANS L\'ETABLISSEMENT"',
+    ].join('\n')
+
+    expect(parseCsvStudentNames(csv)).toEqual(['Yara Amorri', 'Clara Baraduc'])
+  })
+
+  it('never glues the other columns into the name when a header is present', () => {
+    // Header detected via "nom" in "Nom de l'établissement", but no column is usable.
+    expect(parseCsvStudentNames("Nom de l'établissement;Ville\nLycée Hugo;Lyon")).toEqual([
+      'Lycée Hugo',
+    ])
   })
 
   it('skips blank lines anywhere in the file', () => {
