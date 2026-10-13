@@ -9,8 +9,10 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      registerType: 'autoUpdate',
-      injectRegister: 'auto',
+      // The new release waits for the teacher's go-ahead (see src/pwa/registerPwa.ts)
+      // rather than reloading the page under them.
+      registerType: 'prompt',
+      injectRegister: false,
       manifest: {
         name: "Carnet — Suivi d'élèves hors-ligne",
         short_name: 'Carnet',
