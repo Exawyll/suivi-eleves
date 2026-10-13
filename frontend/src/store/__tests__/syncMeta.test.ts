@@ -70,6 +70,18 @@ describe('estampillage des mutations', () => {
   })
 })
 
+describe('édition d’une note', () => {
+  it('marque la note modifiée comme due au serveur, et elle seule', () => {
+    const store = freshStore()
+    const note = store.getState().events.find((e) => e.content.type === 'note')
+    store.setState({ syncMeta: {} })
+
+    store.getState().updateNote(note?.id ?? '', 'Nouvelle formulation')
+
+    expect(dirtyKeys(store.getState().syncMeta)).toEqual([syncKey('event', note?.id ?? '')])
+  })
+})
+
 describe('mutations sans effet', () => {
   it('ne doit rien devoir au serveur quand le nom de classe est inchangé', () => {
     const store = freshStore()
@@ -171,6 +183,16 @@ describe('suppressions', () => {
 
     store.getState().deleteClasse('c1')
     expect(store.getState().syncMeta[syncKey('preference', PREFERENCE_ID)]?.dirty).toBe(true)
+  })
+
+  it('pose une pierre tombale sur l’évènement supprimé', () => {
+    const store = freshStore()
+    const eventId = store.getState().events[0]?.id ?? ''
+    store.setState({ syncMeta: {}, tombstones: {} })
+
+    store.getState().deleteEvent(eventId)
+
+    expect(Object.keys(store.getState().tombstones)).toEqual([syncKey('event', eventId)])
   })
 
   it('ne pose pas de pierre tombale sur un tag qui n’existe pas', () => {

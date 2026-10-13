@@ -30,10 +30,17 @@
   line-height: 1.4;
 }
 
+.featuredNoteFooter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+}
+
 .featuredNoteMeta {
+  flex: 1;
   font-size: 11px;
   color: var(--color-text-50);
-  margin-top: 6px;
 }
 
 .divider {

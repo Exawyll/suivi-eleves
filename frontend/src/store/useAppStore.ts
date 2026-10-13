@@ -96,6 +96,8 @@ export interface AppState extends SyncSlices {
   principalClasseId: Id | null
 
   logEvent: (input: LogEventInput) => void
+  updateNote: (id: Id, text: string) => void
+  deleteEvent: (id: Id) => void
   createTagCategory: (name: string) => Id
   renameTagCategory: (id: Id, name: string) => void
   deleteTagCategory: (id: Id) => void
@@ -122,6 +124,8 @@ export interface AppState extends SyncSlices {
 
 type AppActions =
   | 'logEvent'
+  | 'updateNote'
+  | 'deleteEvent'
   | 'createTagCategory'
   | 'renameTagCategory'
   | 'deleteTagCategory'
@@ -324,6 +328,37 @@ export function createAppStore(
             events: [...newEvents, ...state.events],
             ...touch(state, ...newEvents.map(({ id }) => ['event', id] as const)),
           }))
+        },
+
+        /**
+         * Rewrites a free-text note. The note keeps its original date: it
+         * records when the thing happened, not when its wording was fixed.
+         * Emptying a note is not a way to delete it — `deleteEvent` is.
+         */
+        updateNote: (id, text) => {
+          const trimmed = text.trim()
+          if (trimmed === '') return
+          set((state) => {
+            const current = state.events.find((e) => e.id === id)
+            if (current?.content.type !== 'note' || current.content.text === trimmed) return {}
+            return {
+              events: state.events.map((e) =>
+                e.id === id ? { ...e, content: { type: 'note', text: trimmed } } : e,
+              ),
+              ...touch(state, ['event', id]),
+            }
+          })
+        },
+
+        /** Removes one entry from a history — a note or a tag logged by mistake. */
+        deleteEvent: (id) => {
+          set((state) => {
+            if (!state.events.some((e) => e.id === id)) return {}
+            return {
+              events: state.events.filter((e) => e.id !== id),
+              ...bury(state, ['event', id]),
+            }
+          })
         },
 
         createTagCategory: (name) => {
